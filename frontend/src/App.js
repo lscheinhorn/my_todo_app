@@ -9,7 +9,10 @@ function App() {
 
   // Fetch tasks from backend
   const fetchTasks = () => {
-    axios.get(API_URL).then((res) => setTasks(res.data));
+    axios.get(API_URL).then((res) => {
+      console.log("Fetched data:", res.data); // Debugging log
+      setTasks(Array.isArray(res.data) ? res.data : []); // Ensure it's an array
+    });
   };
 
   // Fetch tasks when the page loads
@@ -54,6 +57,7 @@ function App() {
       <button onClick={addTask}>Add</button>
 
       <ul>
+        {console.log("Tasks state:", tasks)}
         {tasks.map((task) => (
           <li key={task.id} style={{ textDecoration: task.completed ? "line-through" : "none" }}>
             <span onClick={() => toggleTask(task.id)}>{task.text}</span>
