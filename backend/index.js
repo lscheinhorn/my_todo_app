@@ -7,6 +7,12 @@ app.use(express.json());
 
 let tasks = []; // Temporary storage (we'll add a database later)
 
+// Log all incoming requests
+app.use((req, res, next) => {
+    console.log(`${req.method} request to ${req.url} with body:`, req.body);
+    next();
+});
+
 app.get("/", (req, res) => {
     res.send("Backend is running!");
 });
