@@ -9,7 +9,7 @@ let tasks = []; // Temporary storage (we'll add a database later)
 
 // Get all tasks
 app.get("/tasks", (req, res) => {
-  res.json(tasks);
+    res.json({ message: "Tasks endpoint is working!" });
 });
 
 // Add a new task
