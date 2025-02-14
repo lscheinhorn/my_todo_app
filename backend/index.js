@@ -7,9 +7,13 @@ app.use(express.json());
 
 let tasks = []; // Temporary storage (we'll add a database later)
 
+app.get("/", (req, res) => {
+    res.send("Backend is running!");
+});
+
 // Get all tasks
 app.get("/tasks", (req, res) => {
-    res.json({ message: "Tasks endpoint is working!" });
+    res.json(tasks); 
 });
 
 // Add a new task
