@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const API_URL = "https://my-todo-app-mujx.onrender.com";
+const API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 
 function App() {
   const [tasks, setTasks] = useState([]);
