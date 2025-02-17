@@ -20,6 +20,10 @@ const taskSchema = new mongoose.Schema({
 
 const Task = mongoose.model("Task", taskSchema);
 
+app.get("/", (req, res) => {
+    res.send("Welcome to the My To-Do App API!");
+});
+
 // Get all tasks
 app.get("/tasks", async (req, res) => {
   const tasks = await Task.find();
