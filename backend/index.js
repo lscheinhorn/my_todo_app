@@ -1,19 +1,21 @@
 const express = require("express");
 const cors = require("cors");
-
-const corsOptions = {
-  origin: "https://my-todo-app-frontend-catn.onrender.com", // Allow only your frontend
-  methods: "GET,POST,PUT,DELETE",
-  allowedHeaders: "Content-Type",
-};
-
-app.use(cors(corsOptions));const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 require("dotenv").config(); 
-
+ 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+const corsOptions = {
+    origin: "https://my-todo-app-frontend-catn.onrender.com", // Allow only your frontend
+    methods: "GET,POST,PUT,DELETE",
+    allowedHeaders: "Content-Type",
+  };
+  
+app.use(cors(corsOptions));
+
+  
 // Connect to MongoDB
 const mongoURI = process.env.MONGO_URI;
 if (!mongoURI) {
