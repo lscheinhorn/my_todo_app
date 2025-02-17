@@ -8,12 +8,17 @@ function App() {
   const [newTask, setNewTask] = useState("");
 
   // Fetch tasks from backend
-  const fetchTasks = () => {
-    axios.get(API_URL).then((res) => {
-      console.log("Fetched data:", res.data); // Debugging log
-      setTasks(Array.isArray(res.data) ? res.data : []); // Ensure it's an array
+const fetchTasks = () => {
+  console.log("Fetching tasks from API:", API_URL); // Check if frontend is calling the correct URL
+  axios.get(API_URL)
+    .then((res) => {
+      console.log("Tasks received:", res.data); // Log response to check data
+      setTasks(res.data);
+    })
+    .catch((err) => {
+      console.error("Error fetching tasks:", err);
     });
-  };
+};
 
   // Fetch tasks when the page loads
   useEffect(() => {
