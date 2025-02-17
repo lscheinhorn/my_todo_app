@@ -6,9 +6,10 @@ const app = express(); // ✅ Initialize 'app' first
 
 // Configure CORS properly
 const corsOptions = {
-  origin: "https://my-todo-app-frontend-catn.onrender.com", // ✅ Allow frontend access
-  methods: "GET,POST,PUT,DELETE",
-  allowedHeaders: "Content-Type",
+    origin: "https://my-todo-app-frontend-catn.onrender.com", // Allow only frontend domain
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true, // Allow cookies and headers
+    optionsSuccessStatus: 204
 };
 app.use(cors(corsOptions)); // ✅ Now this works
 app.use(express.json()); // ✅ Middleware after initializing 'app'
