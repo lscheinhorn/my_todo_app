@@ -1,6 +1,13 @@
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
+
+const corsOptions = {
+  origin: "https://my-todo-app-frontend-catn.onrender.com", // Allow only your frontend
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type",
+};
+
+app.use(cors(corsOptions));const mongoose = require("mongoose");
 require("dotenv").config(); 
 
 const app = express();

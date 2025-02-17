@@ -45,9 +45,19 @@ const fetchTasks = () => {
 
   // Delete a task and refresh the list
   const deleteTask = (id) => {
-    axios.delete(`${API_URL}/${id}`).then(() => {
-      fetchTasks(); // Refresh after delete
-    });
+    console.log("Deleting task with ID:", id); // Debugging log
+    if (!id) {
+      console.error("Task ID is undefined!"); // Catch undefined errors
+      return;
+    }
+  
+    axios.delete(`${API_URL}/tasks/${id}`)
+      .then(() => {
+        fetchTasks(); // Refresh after delete
+      })
+      .catch((err) => {
+        console.error("Error deleting task:", err);
+      });
   };
 
   return (
