@@ -9,7 +9,11 @@ app.use(express.json());
 
 // Connect to MongoDB
 const mongoURI = process.env.MONGO_URI;
-mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+if (!mongoURI) {
+    console.error("ERROR: MONGO_URI is not set in environment variables.");
+    process.exit(1); // Stop server if no database connection
+  }
+  mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("Connected to MongoDB"))
   .catch(err => console.error("MongoDB connection error:", err));
 
