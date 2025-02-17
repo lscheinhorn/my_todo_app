@@ -37,8 +37,8 @@ const fetchTasks = () => {
 
   // Toggle task completion
   const toggleTask = (id) => {
-    const task = tasks.find((t) => t.id === id);
-    axios.put(`${API_URL}/${id}`, { ...task, completed: !task.completed }).then(() => {
+    const task = tasks.find((t) => t._id === id);
+      axios.put(`${API_URL}/${task._id}`, { ...task, completed: !task.completed }).then(() => { 
       fetchTasks(); // Refresh after update
     });
   };
@@ -50,7 +50,7 @@ const fetchTasks = () => {
       return;
     }
   
-    axios.delete(`${API_URL}/tasks/${id}`)
+    axios.delete(`${API_URL}/${id}`)
       .then(() => fetchTasks())
       .catch(err => console.error("❌ Delete request failed:", err));
   };
@@ -69,9 +69,9 @@ const fetchTasks = () => {
       <ul>
         {console.log("Tasks state:", tasks)}
         {tasks.map((task) => (
-          <li key={task.id} style={{ textDecoration: task.completed ? "line-through" : "none" }}>
-            <span onClick={() => toggleTask(task.id)}>{task.text}</span>
-            <button onClick={() => deleteTask(task.id)}>❌</button>
+          <li key={task._id} style={{ textDecoration: task.completed ? "line-through" : "none" }}>
+            <span onClick={() => toggleTask(task._id)}>{task.text}</span>
+            <button onClick={() => deleteTask(task._id)}>❌</button>
           </li>
         ))}
       </ul>
