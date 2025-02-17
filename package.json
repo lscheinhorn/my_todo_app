@@ -1,5 +1,10 @@
 {
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "mongodb": "^6.13.0",
+    "mongoose": "^8.10.1"
   }
 }
