@@ -4,49 +4,37 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
 import Spaces from "./Spaces";
-import SubListView from "./SubListView";
+import SubListsDropdown from "./SubListsDropdown";
 
-// Adjust to your actual backend endpoints
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
-const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
 function App() {
-  // The space ID the user has selected (e.g. "ALL", "DELETED", or a real Mongo _id)
+  // The space the user has selected
   const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");
 
-  // The main array of tasks from the backend
+  // Array of tasks from the backend
   const [tasks, setTasks] = useState([]);
 
-  // Sorting: "dueDate", "priority", or "createdAt"
+  // Sorting
   const [sortBy, setSortBy] = useState("dueDate");
 
-  // Bulk edit mode
+  // Bulk Edit
   const [bulkEdit, setBulkEdit] = useState(false);
 
-  // Tracks which tasks are expanded (to show “Mark Complete,” “Delete,” etc.)
+  // Which tasks are expanded
   const [expandedTasks, setExpandedTasks] = useState({});
 
-  // Sub-list logic
-  const [viewingSubList, setViewingSubList] = useState(false);
-  const [selectedSubListId, setSelectedSubListId] = useState(null);
-
-  // New task form fields
+  // New Task form
   const [newTaskText, setNewTaskText] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("none");
   const [showNewTaskDueDate, setShowNewTaskDueDate] = useState(false);
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
 
-  // Whenever selectedSpaceId changes, fetch tasks
+  // Fetch tasks whenever selectedSpaceId changes
   useEffect(() => {
     fetchTasks();
   }, [selectedSpaceId]);
 
-  /**
-   * Fetch tasks from the backend based on selectedSpaceId.
-   * - "ALL": tasks with deletedAt=null
-   * - "DELETED": tasks with deletedAt != null in last 30 days
-   * - real spaceId: tasks with that spaceId, deletedAt=null
-   */
   function fetchTasks() {
     if (selectedSpaceId === "ALL") {
       axios
@@ -62,14 +50,12 @@ function App() {
         .catch((err) => console.error("Error fetching deleted tasks:", err));
       return;
     }
-    // Otherwise, fetch tasks for that specific space ID
     axios
       .get(`${TASKS_API_URL}?spaceId=${selectedSpaceId}`)
       .then((res) => setTasks(res.data))
       .catch((err) => console.error("Error fetching tasks:", err));
   }
 
-  // Create a new task
   function addTask(e) {
     e.preventDefault();
     if (!newTaskText.trim()) return;
@@ -100,7 +86,6 @@ function App() {
       .catch((err) => console.error("Error adding task:", err));
   }
 
-  // Mark a task as complete/incomplete
   function markComplete(task) {
     axios
       .put(`${TASKS_API_URL}/${task._id}`, {
@@ -111,7 +96,6 @@ function App() {
       .catch((err) => console.error("Error toggling complete:", err));
   }
 
-  // Soft-delete a task (moves it to “deleted”)
   function deleteTask(taskId) {
     axios
       .delete(`${TASKS_API_URL}/${taskId}`)
@@ -119,7 +103,6 @@ function App() {
       .catch((err) => console.error("Error deleting task:", err));
   }
 
-  // Restore a deleted task
   function restoreTask(taskId) {
     axios
       .put(`${TASKS_API_URL}/${taskId}/restore`)
@@ -127,11 +110,11 @@ function App() {
       .catch((err) => console.error("Error restoring task:", err));
   }
 
-  // Sorting tasks in memory
+  // Sorting
   function getSortedTasks() {
     const sorted = [...tasks];
     sorted.sort((a, b) => {
-      // Completed tasks go last
+      // Completed tasks last
       if (a.completed && !b.completed) return 1;
       if (!a.completed && b.completed) return -1;
 
@@ -149,34 +132,28 @@ function App() {
         if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
           return aDue - bDue;
         }
-        // Then by priority descending
         if (aPrio !== bPrio) {
           return bPrio - aPrio;
         }
-        // Then by creation date ascending
         return aCreated - bCreated;
       } else if (sortBy === "priority") {
-        // Priority descending
         if (aPrio !== bPrio) {
           return bPrio - aPrio;
         }
-        // Then due date ascending
         if (!aDue && bDue) return 1;
         if (aDue && !bDue) return -1;
         if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
           return aDue - bDue;
         }
-        // Then created date ascending
         return aCreated - bCreated;
       } else {
-        // sortBy === "createdAt"
+        // createdAt
         return aCreated - bCreated;
       }
     });
     return sorted;
   }
 
-  // Group tasks by due date if sortBy === "dueDate"
   function groupTasksByDueDate(sortedTasks) {
     if (sortBy !== "dueDate") {
       return [{ dateLabel: null, tasks: sortedTasks }];
@@ -220,7 +197,6 @@ function App() {
   const sortedTasks = getSortedTasks();
   const groupedTasks = groupTasksByDueDate(sortedTasks);
 
-  // Toggle expansion for a single task
   function toggleExpandTask(taskId) {
     setExpandedTasks((prev) => ({
       ...prev,
@@ -228,7 +204,6 @@ function App() {
     }));
   }
 
-  // Bulk edit: expand all or collapse all
   function toggleBulkEdit() {
     const nextValue = !bulkEdit;
     setBulkEdit(nextValue);
@@ -243,36 +218,235 @@ function App() {
     }
   }
 
-  // Sub-list logic: create or view sub-lists
-  function addSubList(taskId) {
+  // Helper for priority class
+  function getPriorityClass(task) {
+    if (task.priority === "high") return "priority-high";
+    if (task.priority
+
+Below is a **complete** `App.js` that continues after the snippet got truncated. It includes the entire code, showing how the sub-lists dropdown is integrated inside each task. Please copy the **whole** file to avoid truncation issues.
+
+```jsx
+// App.js
+
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import "./App.css";
+import Spaces from "./Spaces";
+import SubListsDropdown from "./SubListsDropdown";
+
+const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
+
+function App() {
+  // The space the user has selected
+  const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");
+
+  // Array of tasks from the backend
+  const [tasks, setTasks] = useState([]);
+
+  // Sorting
+  const [sortBy, setSortBy] = useState("dueDate");
+
+  // Bulk Edit
+  const [bulkEdit, setBulkEdit] = useState(false);
+
+  // Which tasks are expanded
+  const [expandedTasks, setExpandedTasks] = useState({});
+
+  // New Task form
+  const [newTaskText, setNewTaskText] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState("none");
+  const [showNewTaskDueDate, setShowNewTaskDueDate] = useState(false);
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
+
+  // Fetch tasks whenever selectedSpaceId changes
+  useEffect(() => {
+    fetchTasks();
+  }, [selectedSpaceId]);
+
+  function fetchTasks() {
+    if (selectedSpaceId === "ALL") {
+      axios
+        .get(TASKS_API_URL)
+        .then((res) => setTasks(res.data))
+        .catch((err) => console.error("Error fetching tasks:", err));
+      return;
+    }
+    if (selectedSpaceId === "DELETED") {
+      axios
+        .get(`${TASKS_API_URL}?spaceId=DELETED`)
+        .then((res) => setTasks(res.data))
+        .catch((err) => console.error("Error fetching deleted tasks:", err));
+      return;
+    }
     axios
-      .post(SUBLISTS_API_URL, { taskId, name: "New List" })
-      .then((res) => {
-        setSelectedSubListId(res.data._id);
-        setViewingSubList(true);
+      .get(`${TASKS_API_URL}?spaceId=${selectedSpaceId}`)
+      .then((res) => setTasks(res.data))
+      .catch((err) => console.error("Error fetching tasks:", err));
+  }
+
+  function addTask(e) {
+    e.preventDefault();
+    if (!newTaskText.trim()) return;
+    if (selectedSpaceId === "ALL" || selectedSpaceId === "DELETED") return;
+
+    let dueDateToSend = null;
+    if (showNewTaskDueDate && newTaskDueDate) {
+      dueDateToSend = newTaskDueDate;
+    }
+
+    const taskData = {
+      text: newTaskText,
+      completed: false,
+      spaceId: selectedSpaceId,
+      priority: newTaskPriority,
+      dueDate: dueDateToSend,
+    };
+
+    axios
+      .post(TASKS_API_URL, taskData)
+      .then(() => {
+        setNewTaskText("");
+        setNewTaskPriority("none");
+        setShowNewTaskDueDate(false);
+        setNewTaskDueDate("");
+        fetchTasks();
       })
-      .catch((err) => console.error("Error creating sub-list:", err));
+      .catch((err) => console.error("Error adding task:", err));
   }
 
-  function viewSubList(subListId) {
-    setSelectedSubListId(subListId);
-    setViewingSubList(true);
+  function markComplete(task) {
+    axios
+      .put(`${TASKS_API_URL}/${task._id}`, {
+        ...task,
+        completed: !task.completed,
+      })
+      .then(() => fetchTasks())
+      .catch((err) => console.error("Error toggling complete:", err));
   }
 
-  // If user is viewing a sub-list, show SubListView
-  if (viewingSubList && selectedSubListId) {
-    return (
-      <SubListView
-        subListId={selectedSubListId}
-        onBack={() => {
-          setViewingSubList(false);
-          setSelectedSubListId(null);
-        }}
-      />
-    );
+  function deleteTask(taskId) {
+    axios
+      .delete(`${TASKS_API_URL}/${taskId}`)
+      .then(() => fetchTasks())
+      .catch((err) => console.error("Error deleting task:", err));
   }
 
-  // Helper for priority CSS classes
+  function restoreTask(taskId) {
+    axios
+      .put(`${TASKS_API_URL}/${taskId}/restore`)
+      .then(() => fetchTasks())
+      .catch((err) => console.error("Error restoring task:", err));
+  }
+
+  // Sorting
+  function getSortedTasks() {
+    const sorted = [...tasks];
+    sorted.sort((a, b) => {
+      // Completed tasks last
+      if (a.completed && !b.completed) return 1;
+      if (!a.completed && b.completed) return -1;
+
+      const aDue = a.dueDate ? new Date(a.dueDate) : null;
+      const bDue = b.dueDate ? new Date(b.dueDate) : null;
+      const priorityRank = { high: 2, priority: 1, none: 0 };
+      const aPrio = priorityRank[a.priority] || 0;
+      const bPrio = priorityRank[b.priority] || 0;
+      const aCreated = new Date(a.createdAt);
+      const bCreated = new Date(b.createdAt);
+
+      if (sortBy === "dueDate") {
+        if (!aDue && bDue) return 1;
+        if (aDue && !bDue) return -1;
+        if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
+          return aDue - bDue;
+        }
+        if (aPrio !== bPrio) {
+          return bPrio - aPrio;
+        }
+        return aCreated - bCreated;
+      } else if (sortBy === "priority") {
+        if (aPrio !== bPrio) {
+          return bPrio - aPrio;
+        }
+        if (!aDue && bDue) return 1;
+        if (aDue && !bDue) return -1;
+        if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
+          return aDue - bDue;
+        }
+        return aCreated - bCreated;
+      } else {
+        // createdAt
+        return aCreated - bCreated;
+      }
+    });
+    return sorted;
+  }
+
+  function groupTasksByDueDate(sortedTasks) {
+    if (sortBy !== "dueDate") {
+      return [{ dateLabel: null, tasks: sortedTasks }];
+    }
+    const groups = {};
+    sortedTasks.forEach((task) => {
+      if (!task.dueDate) {
+        const key = "No Due Date";
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(task);
+      } else {
+        const dayKey = new Date(task.dueDate).toISOString().split("T")[0];
+        if (!groups[dayKey]) groups[dayKey] = [];
+        groups[dayKey].push(task);
+      }
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === "No Due Date") return 1;
+      if (b === "No Due Date") return -1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map((key) => {
+      let dateLabel;
+      if (key === "No Due Date") {
+        dateLabel = "No Due Date";
+      } else {
+        const dateObj = new Date(`${key}T00:00:00`);
+        dateLabel = dateObj.toLocaleDateString(undefined, {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      }
+      return { dateLabel, tasks: groups[key] };
+    });
+  }
+
+  const sortedTasks = getSortedTasks();
+  const groupedTasks = groupTasksByDueDate(sortedTasks);
+
+  function toggleExpandTask(taskId) {
+    setExpandedTasks((prev) => ({
+      ...prev,
+      [taskId]: !prev[taskId],
+    }));
+  }
+
+  function toggleBulkEdit() {
+    const nextValue = !bulkEdit;
+    setBulkEdit(nextValue);
+    if (nextValue) {
+      const expandMap = {};
+      sortedTasks.forEach((task) => {
+        expandMap[task._id] = true;
+      });
+      setExpandedTasks(expandMap);
+    } else {
+      setExpandedTasks({});
+    }
+  }
+
+  // Priority classes
   function getPriorityClass(task) {
     if (task.priority === "high") return "priority-high";
     if (task.priority === "priority") return "priority-normal";
@@ -283,13 +457,13 @@ function App() {
     <div className="app-container">
       <h1>My To-Do List</h1>
 
-      {/* RENDER SPACES COMPONENT HERE */}
+      {/* Render the inline spaces row */}
       <Spaces
         selectedSpaceId={selectedSpaceId}
         onSpaceSelect={(id) => setSelectedSpaceId(id)}
       />
 
-      {/* New Task Form (only if not in DELETED space) */}
+      {/* New Task Form (not shown if "DELETED" or "ALL") */}
       {selectedSpaceId !== "DELETED" && (
         <form className="new-task-form" onSubmit={addTask}>
           <div className="form-row">
@@ -400,7 +574,6 @@ function App() {
                     {/* Expanded View */}
                     {isExpanded && (
                       <div className="task-expanded">
-                        {/* If in "DELETED" space, show "Restore" only */}
                         {selectedSpaceId === "DELETED" ? (
                           <div className="task-actions">
                             <button onClick={() => restoreTask(task._id)}>
@@ -421,12 +594,8 @@ function App() {
                               Delete
                             </button>
 
-                            {/* Sub-list Buttons */}
-                            <SubListButtons
-                              taskId={task._id}
-                              onAddSubList={addSubList}
-                              onViewSubList={viewSubList}
-                            />
+                            {/* Sub-lists: same UI as tasks, in a dropdown */}
+                            <SubListsDropdown taskId={task._id} />
                           </div>
                         )}
                       </div>
@@ -439,36 +608,6 @@ function App() {
         ))}
       </div>
     </div>
-  );
-}
-
-/**
- * SubListButtons: fetch sub-lists for a given task. If none exist, show "Add List";
- * if they do exist, show "Show List" or "Add Another List".
- */
-function SubListButtons({ taskId, onAddSubList, onViewSubList }) {
-  const [subLists, setSubLists] = useState([]);
-
-  useEffect(() => {
-    axios
-      .get(`${SUBLISTS_API_URL}?taskId=${taskId}`)
-      .then((res) => setSubLists(res.data))
-      .catch((err) => console.error("Error fetching sub-lists:", err));
-  }, [taskId]);
-
-  if (!subLists.length) {
-    return <button onClick={() => onAddSubList(taskId)}>Add List</button>;
-  }
-
-  return (
-    <>
-      {subLists.map((list) => (
-        <button key={list._id} onClick={() => onViewSubList(list._id)}>
-          Show List: {list.name}
-        </button>
-      ))}
-      <button onClick={() => onAddSubList(taskId)}>Add Another List</button>
-    </>
   );
 }
 

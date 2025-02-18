@@ -7,95 +7,99 @@ const SPACES_API_URL = "https://my-todo-app-mujx.onrender.com/spaces";
 
 function Spaces({ onSpaceSelect, selectedSpaceId }) {
   const [spaces, setSpaces] = useState([]);
+  const [showAddInput, setShowAddInput] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
 
   useEffect(() => {
     fetchSpaces();
   }, []);
 
-  const fetchSpaces = () => {
+  function fetchSpaces() {
     axios
       .get(SPACES_API_URL)
       .then((res) => setSpaces(res.data))
       .catch((err) => console.error("Error fetching spaces:", err));
-  };
+  }
 
-  const addSpace = () => {
-    if (newSpaceName.trim()) {
-      axios
-        .post(SPACES_API_URL, { name: newSpaceName })
-        .then(() => {
-          setNewSpaceName("");
-          fetchSpaces();
-        })
-        .catch((err) => console.error("Error creating space:", err));
+  function handleAddSpace() {
+    if (!newSpaceName.trim()) {
+      // If user didn't type anything, just hide input
+      setShowAddInput(false);
+      return;
     }
-  };
-
-  const deleteSpace = (id) => {
     axios
-      .delete(`${SPACES_API_URL}/${id}`)
+      .post(SPACES_API_URL, { name: newSpaceName })
+      .then(() => {
+        setNewSpaceName("");
+        setShowAddInput(false);
+        fetchSpaces();
+      })
+      .catch((err) => console.error("Error creating space:", err));
+  }
+
+  function handleDeleteSpace(spaceId, e) {
+    e.stopPropagation(); // Prevent selecting the space
+    axios
+      .delete(`${SPACES_API_URL}/${spaceId}`)
       .then(() => fetchSpaces())
       .catch((err) => console.error("Error deleting space:", err));
-  };
+  }
 
   return (
-    <div className="spaces-container">
-      <h2>Spaces</h2>
-      <div className="spaces-input-row">
-        <input
-          value={newSpaceName}
-          onChange={(e) => setNewSpaceName(e.target.value)}
-          placeholder="New space name..."
-        />
-        <button onClick={addSpace}>Add Space</button>
+    <div className="spaces-inline">
+      {/* "All tasks" item */}
+      <div
+        className={`space-item ${
+          selectedSpaceId === "ALL" ? "selected" : ""
+        }`}
+        onClick={() => onSpaceSelect("ALL")}
+      >
+        All tasks
       </div>
 
-      <ul className="spaces-list">
-        {/* “View All” */}
-        <li
-          className={
-            selectedSpaceId === "ALL" ? "spaces-list-item selected" : "spaces-list-item"
-          }
-          onClick={() => onSpaceSelect("ALL")}
+      {/* Render actual spaces from DB */}
+      {spaces.map((space) => (
+        <div
+          key={space._id}
+          className={`space-item ${
+            space._id === selectedSpaceId ? "selected" : ""
+          }`}
+          onClick={() => onSpaceSelect(space._id)}
         >
-          View All
-        </li>
-
-        {/* “Deleted Tasks” */}
-        <li
-          className={
-            selectedSpaceId === "DELETED" ? "spaces-list-item selected" : "spaces-list-item"
-          }
-          onClick={() => onSpaceSelect("DELETED")}
-        >
-          Deleted Tasks
-        </li>
-
-        {/* Actual Spaces from the database */}
-        {spaces.map((space) => (
-          <li
-            key={space._id}
-            className={
-              space._id === selectedSpaceId
-                ? "spaces-list-item selected"
-                : "spaces-list-item"
-            }
-            onClick={() => onSpaceSelect(space._id)}
+          {space.name}
+          <button
+            className="delete-space-btn"
+            onClick={(e) => handleDeleteSpace(space._id, e)}
           >
-            <div className="space-name">{space.name}</div>
-            <button
-              className="delete-space-btn"
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent selecting space
-                deleteSpace(space._id);
-              }}
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+            X
+          </button>
+        </div>
+      ))}
+
+      {/* "Deleted tasks" item */}
+      <div
+        className={`space-item ${
+          selectedSpaceId === "DELETED" ? "selected" : ""
+        }`}
+        onClick={() => onSpaceSelect("DELETED")}
+      >
+        Deleted tasks
+      </div>
+
+      {/* "Add" button or inline input */}
+      {showAddInput ? (
+        <>
+          <input
+            className="add-space-input"
+            value={newSpaceName}
+            onChange={(e) => setNewSpaceName(e.target.value)}
+            placeholder="Space name..."
+          />
+          <button onClick={handleAddSpace}>OK</button>
+        </>
+      ) : (
+        <button onClick={() => setShowAddInput(true)}>Add</button>
+      )}
     </div>
   );
 }

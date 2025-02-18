@@ -26,77 +26,35 @@ html, body {
 }
 
 /* 
-  Spaces container styling:
-  This section shows "View All," "Deleted Tasks," and the actual spaces 
-  fetched from the backend in the Spaces component.
+  Spaces row (inline):
+  "All tasks" on the left, then real spaces, then "Deleted tasks," then "Add" button
 */
-.spaces-container {
-  width: 100%;
-  max-width: 400px;
+.spaces-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 20px;
 }
 
-.spaces-container h2 {
-  margin-bottom: 10px;
+.space-item {
+  background-color: #2C2C2E;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
 }
 
-.spaces-input-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+.space-item.selected {
+  border: 1px solid #61dafb;
 }
 
-.spaces-input-row input {
-  flex: 1;
+.add-space-input {
   padding: 6px;
   border: 1px solid #333;
   border-radius: 4px;
   background-color: #2C2C2E;
   color: #fff;
-}
-
-.spaces-input-row button {
-  padding: 6px 12px;
-  border: 1px solid #444;
-  background-color: #3A3A3C;
-  color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.spaces-list {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-}
-
-.spaces-list-item {
-  background-color: #2C2C2E;
-  margin-bottom: 4px;
-  padding: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.spaces-list-item.selected {
-  background-color: #48484A;
-}
-
-.space-name {
-  flex: 1;
   margin-right: 10px;
-}
-
-.delete-space-btn {
-  padding: 4px 8px;
-  background-color: #FF375F; /* Apple-like destructive color */
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
 /* New Task Form */
@@ -192,8 +150,8 @@ html, body {
 
 /* Priority Borders */
 .priority-high {
-  border: 3px solid #FF2D55; /* Full bright red border */
-  border-left-width: 8px;    /* Thicker left edge */
+  border: 3px solid #FF2D55; /* bright red border */
+  border-left-width: 8px;    /* thicker left edge */
 }
 
 .priority-normal {
@@ -201,14 +159,14 @@ html, body {
   border-left-width: 8px;
 }
 
-/* Task List Items */
+/* Task Items */
 .tasks-list-item {
   margin-bottom: 6px;
   border-radius: 4px;
   background-color: #2C2C2E;
   position: relative;
   padding: 10px;
-  outline: none; /* Make it focusable for screen readers/keyboard */
+  outline: none; /* focusable for screen readers/keyboard */
 }
 
 .tasks-list-item:focus-within {
@@ -216,14 +174,14 @@ html, body {
   outline-offset: 4px;
 }
 
-/* Collapsed View: Only show the task title and a toggle button */
+/* Collapsed View: show only the task title button */
 .task-collapsed {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-/* Title button that toggles expansion */
+/* Title button for toggling expansion */
 .task-title-button {
   background: none;
   border: none;
@@ -234,7 +192,7 @@ html, body {
   flex: 1;
 }
 
-/* Expanded View: Shown when a task is toggled open */
+/* Expanded View */
 .task-expanded {
   margin-top: 8px;
   display: flex;
@@ -242,7 +200,7 @@ html, body {
   gap: 8px;
 }
 
-/* Action buttons: Mark Complete, Edit, Delete, Restore, etc. */
+/* Action buttons for tasks or sub-lists */
 .task-actions {
   display: flex;
   flex-wrap: wrap;
@@ -258,7 +216,7 @@ html, body {
   cursor: pointer;
 }
 
-/* Destructive and Restore color */
+/* Destructive and restore color */
 .delete-btn {
   background-color: #FF375F;
   border: none;
@@ -269,11 +227,58 @@ html, body {
   border: none;
 }
 
-/* Sub-list container styling (for SubListView.js if you want) */
-.sub-list-container {
-  max-width: 400px;
-  margin: 0 auto;
-  background-color: #2C2C2E;
-  padding: 20px;
-  border-radius: 6px;
+/* Sub-lists dropdown: 
+   "List: [select] [Add]" 
+   Then a sub-list is displayed like tasks for its items
+*/
+.sub-lists-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+
+.sub-lists-row select {
+  background-color: #2C2C2E;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+/* Sub-list items: same style as tasks-list, tasks-list-item, etc.
+   We'll reuse classes or define new ones if needed.
+*/
+.sublist-items {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sublist-item {
+  margin-bottom: 6px;
+  border-radius: 4px;
+  background-color: #2C2C2E;
+  padding: 10px;
+  outline: none;
+}
+
+.sublist-item:focus-within {
+  outline: 2px dashed #61dafb;
+  outline-offset: 4px;
+}
+
+.sublist-item-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sublist-item-expanded {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* etc. You can replicate more styles as needed for sub-list items */
