@@ -62,9 +62,8 @@ function App() {
   };
 
   return (
-    {/* Always apply dark-mode here */}
     <div style={{ padding: "20px", maxWidth: "400px", margin: "auto" }} className="dark-mode">
-      <h2>My To-Do List</h2>
+      <h2>My To-Do List</h2>#
 
       <Spaces
         onSpaceSelect={(id) => setSelectedSpaceId(id)}
