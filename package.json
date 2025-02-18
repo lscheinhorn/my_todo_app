@@ -5,6 +5,7 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "mongodb": "^6.13.0",
-    "mongoose": "^8.10.1"
+    "mongoose": "^8.10.1",
+    "react-router-dom": "^7.2.0"
   }
 }

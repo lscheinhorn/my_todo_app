@@ -5,6 +5,10 @@ import axios from "axios";
 
 const SPACES_API_URL = "https://my-todo-app-mujx.onrender.com/spaces";
 
+/**
+ * Inline row of spaces:
+ * [All tasks] [Space1] [Space2] ... [Deleted tasks] [Add]
+ */
 function Spaces({ onSpaceSelect, selectedSpaceId }) {
   const [spaces, setSpaces] = useState([]);
   const [showAddInput, setShowAddInput] = useState(false);
@@ -23,7 +27,6 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
 
   function handleAddSpace() {
     if (!newSpaceName.trim()) {
-      // If user didn't type anything, just hide input
       setShowAddInput(false);
       return;
     }
@@ -47,23 +50,19 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
 
   return (
     <div className="spaces-inline">
-      {/* "All tasks" item */}
+      {/* All tasks */}
       <div
-        className={`space-item ${
-          selectedSpaceId === "ALL" ? "selected" : ""
-        }`}
+        className={`space-item ${selectedSpaceId === "ALL" ? "selected" : ""}`}
         onClick={() => onSpaceSelect("ALL")}
       >
         All tasks
       </div>
 
-      {/* Render actual spaces from DB */}
+      {/* Actual spaces */}
       {spaces.map((space) => (
         <div
           key={space._id}
-          className={`space-item ${
-            space._id === selectedSpaceId ? "selected" : ""
-          }`}
+          className={`space-item ${space._id === selectedSpaceId ? "selected" : ""}`}
           onClick={() => onSpaceSelect(space._id)}
         >
           {space.name}
@@ -76,17 +75,15 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
         </div>
       ))}
 
-      {/* "Deleted tasks" item */}
+      {/* Deleted tasks */}
       <div
-        className={`space-item ${
-          selectedSpaceId === "DELETED" ? "selected" : ""
-        }`}
+        className={`space-item ${selectedSpaceId === "DELETED" ? "selected" : ""}`}
         onClick={() => onSpaceSelect("DELETED")}
       >
         Deleted tasks
       </div>
 
-      {/* "Add" button or inline input */}
+      {/* Add button or inline input */}
       {showAddInput ? (
         <>
           <input

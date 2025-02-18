@@ -25,10 +25,7 @@ html, body {
   font-size: 1.8rem;
 }
 
-/* 
-  Spaces row (inline):
-  "All tasks" on the left, then real spaces, then "Deleted tasks," then "Add" button
-*/
+/* Spaces inline row */
 .spaces-inline {
   display: flex;
   align-items: center;
@@ -227,58 +224,11 @@ html, body {
   border: none;
 }
 
-/* Sub-lists dropdown: 
-   "List: [select] [Add]" 
-   Then a sub-list is displayed like tasks for its items
-*/
-.sub-lists-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sub-lists-row select {
+/* Sub-list container styling (for SubListPage, if you want to reuse) */
+.sub-list-container {
+  max-width: 400px;
+  margin: 0 auto;
   background-color: #2C2C2E;
-  color: #fff;
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 4px;
-  cursor: pointer;
+  padding: 20px;
+  border-radius: 6px;
 }
-
-/* Sub-list items: same style as tasks-list, tasks-list-item, etc.
-   We'll reuse classes or define new ones if needed.
-*/
-.sublist-items {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-}
-
-.sublist-item {
-  margin-bottom: 6px;
-  border-radius: 4px;
-  background-color: #2C2C2E;
-  padding: 10px;
-  outline: none;
-}
-
-.sublist-item:focus-within {
-  outline: 2px dashed #61dafb;
-  outline-offset: 4px;
-}
-
-.sublist-item-collapsed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sublist-item-expanded {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* etc. You can replicate more styles as needed for sub-list items */
