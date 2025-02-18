@@ -8,7 +8,7 @@ const app = express();
 
 // Configure CORS properly
 const corsOptions = {
-  origin: "https://my-todo-app-frontend-catn.onrender.com", // Update to your actual frontend
+  origin: "https://my-todo-app-frontend-catn.onrender.com", // or your actual frontend
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   optionsSuccessStatus: 204
@@ -29,7 +29,7 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Define Task Schema
+// Task Schema
 const taskSchema = new mongoose.Schema({
   text: String,
   completed: Boolean,
@@ -38,31 +38,32 @@ const taskSchema = new mongoose.Schema({
     ref: "Space",
     required: false,
   },
-  // Automatically store the creation date
   createdAt: {
     type: Date,
     default: Date.now,
   },
-  // Optional due date
   dueDate: {
     type: Date,
     default: null,
   },
-  // Priority: "none" (default), "priority" (yellow), or "high" (red)
   priority: {
     type: String,
     enum: ["none", "priority", "high"],
     default: "none",
   },
+  // Soft delete field
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
 });
 
 const Task = mongoose.model("Task", taskSchema);
 
-// Define Space Schema
+// Space Schema
 const spaceSchema = new mongoose.Schema({
   name: { type: String, required: true },
 });
-
 const Space = mongoose.model("Space", spaceSchema);
 
 // Root
@@ -71,11 +72,29 @@ app.get("/", (req, res) => {
   res.send("Welcome to the My To-Do App API!");
 });
 
-// Get all tasks (optionally filtered by spaceId)
+// Get tasks (optionally by spaceId). Exclude tasks that have deletedAt != null, unless we request "deleted" space
 app.get("/tasks", async (req, res) => {
   try {
     const { spaceId } = req.query;
-    const query = spaceId ? { spaceId } : {};
+
+    if (spaceId === "DELETED") {
+      // Return tasks that are in the "deleted" state, sorted by most recent deletion first
+      // We can add a check to only include tasks deleted in the last 30 days if we want
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      // Only show tasks that have been deleted in the last 30 days
+      const tasks = await Task.find({
+        deletedAt: { $ne: null, $gte: thirtyDaysAgo },
+      }).sort({ deletedAt: -1 });
+      return res.json(tasks);
+    }
+
+    // Normal tasks
+    let query = { deletedAt: null };
+    if (spaceId && spaceId !== "ALL") {
+      query.spaceId = spaceId;
+    }
+
     const tasks = await Task.find(query);
     res.json(tasks);
   } catch (err) {
@@ -93,6 +112,7 @@ app.post("/tasks", async (req, res) => {
       spaceId: req.body.spaceId || null,
       dueDate: req.body.dueDate || null,
       priority: req.body.priority || "none",
+      deletedAt: null, // not deleted
     };
     const task = new Task(taskData);
     await task.save();
@@ -112,6 +132,7 @@ app.put("/tasks/:id", async (req, res) => {
       dueDate: req.body.dueDate,
       priority: req.body.priority,
     };
+    // We do not reset deletedAt here unless we specifically want to "undelete"
     const task = await Task.findByIdAndUpdate(req.params.id, updatedData, { new: true });
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
@@ -121,14 +142,36 @@ app.put("/tasks/:id", async (req, res) => {
   }
 });
 
-// Delete a task
+// Soft-delete a task
 app.delete("/tasks/:id", async (req, res) => {
   try {
-    await Task.findByIdAndDelete(req.params.id);
-    res.json({ message: "Task deleted" });
+    // Instead of removing the document, we set deletedAt to now
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      { deletedAt: Date.now() },
+      { new: true }
+    );
+    if (!task) return res.status(404).json({ message: "Task not found" });
+    res.json({ message: "Task soft-deleted", task });
   } catch (err) {
     console.error("❌ Error deleting task:", err);
     res.status(500).json({ message: "Error deleting task", error: err });
+  }
+});
+
+// Undelete a task
+app.put("/tasks/:id/undelete", async (req, res) => {
+  try {
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      { deletedAt: null },
+      { new: true }
+    );
+    if (!task) return res.status(404).json({ message: "Task not found or not deleted" });
+    res.json({ message: "Task restored", task });
+  } catch (err) {
+    console.error("❌ Error undeleting task:", err);
+    res.status(500).json({ message: "Error undeleting task", error: err });
   }
 });
 
@@ -169,11 +212,26 @@ app.put("/spaces/:id", async (req, res) => {
 app.delete("/spaces/:id", async (req, res) => {
   try {
     await Space.findByIdAndDelete(req.params.id);
-    // Optionally delete tasks in that space
-    await Task.deleteMany({ spaceId: req.params.id });
+    // Optionally, soft-delete tasks in that space:
+    await Task.updateMany({ spaceId: req.params.id }, { deletedAt: Date.now() });
     res.json({ message: "Space and associated tasks deleted" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting space", error: err });
+  }
+});
+
+// Example: Purge tasks older than 30 days (if you want an endpoint or a scheduled job)
+app.delete("/tasks/purge-old", async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    await Task.deleteMany({
+      deletedAt: { $lte: thirtyDaysAgo, $ne: null },
+    });
+    res.json({ message: "Old deleted tasks purged" });
+  } catch (err) {
+    console.error("❌ Error purging old tasks:", err);
+    res.status(500).json({ message: "Error purging tasks", error: err });
   }
 });
 
