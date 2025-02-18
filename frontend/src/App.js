@@ -7,18 +7,20 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
 
+  const [selectedSpaceId, setSelectedSpaceId] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+
+
   // Fetch tasks from backend
-const fetchTasks = () => {
-  console.log("Fetching tasks from API:", API_URL); // Check if frontend is calling the correct URL
-  axios.get(API_URL)
-    .then((res) => {
-      console.log("Tasks received:", res.data); // Log response to check data
-      setTasks(res.data);
-    })
-    .catch((err) => {
-      console.error("Error fetching tasks:", err);
-    });
-};
+  const fetchTasks = () => {
+    let url = API_URL;
+    if (selectedSpaceId) {
+      url += `?spaceId=${selectedSpaceId}`;
+    }
+    axios.get(url)
+      .then((res) => setTasks(res.data))
+      .catch((err) => console.error("Error fetching tasks:", err));
+  };
 
   // Fetch tasks when the page loads
   useEffect(() => {
@@ -28,7 +30,11 @@ const fetchTasks = () => {
   // Add a new task and refresh the list
   const addTask = () => {
     if (newTask.trim()) {
-      axios.post(API_URL, { text: newTask, completed: false }).then(() => {
+      axios.post(API_URL, { 
+        text: newTask, 
+        completed: false,
+        spaceId: selectedSpaceId 
+      }).then(() => {
         fetchTasks(); // Refresh tasks after adding
         setNewTask("");
       });
@@ -56,7 +62,10 @@ const fetchTasks = () => {
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "400px", margin: "auto" }}>
+    <div style={{ padding: "20px", maxWidth: "400px", margin: "auto" }} className={darkMode ? "dark-mode" : ""}>
+      <button onClick={() => setDarkMode(!darkMode)}>
+        Toggle Dark Mode
+      </button>
       <h2>My To-Do List</h2>
       <input
         type="text"

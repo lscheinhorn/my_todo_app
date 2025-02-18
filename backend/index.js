@@ -27,10 +27,23 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+// Define Space Schema
+const spaceSchema = new mongoose.Schema({
+name: { type: String, required: true },
+});
+
+const Space = mongoose.model("Space", spaceSchema);
+
+
 // Define Task Schema
 const taskSchema = new mongoose.Schema({
-  text: String,
-  completed: Boolean,
+    text: String,
+    completed: Boolean,
+    spaceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Space",
+        required: false,
+    },
 });
 
 const Task = mongoose.model("Task", taskSchema);
@@ -40,11 +53,66 @@ app.get("/", (req, res) => {
   res.send("Welcome to the My To-Do App API!");
 });
 
+
+// Create a new space
+app.post("/spaces", async (req, res) => {
+    try {
+        const space = new Space({ name: req.body.name });
+        await space.save();
+        res.status(201).json(space);
+    } catch (err) {
+        console.error("❌ Error creating space:", err);
+        res.status(500).json({ message: "Error creating space", error: err });
+    }
+    });
+
+    // Get all spaces
+    app.get("/spaces", async (req, res) => {
+    try {
+        const spaces = await Space.find();
+        res.json(spaces);
+    } catch (err) {
+        console.error("❌ Error fetching spaces:", err);
+        res.status(500).json({ message: "Error fetching spaces", error: err });
+    }
+    });
+
+    // Update a space name
+    app.put("/spaces/:id", async (req, res) => {
+    try {
+        const space = await Space.findByIdAndUpdate(
+        req.params.id,
+        { name: req.body.name },
+        { new: true }
+        );
+        if (!space) return res.status(404).json({ message: "Space not found" });
+        res.json(space);
+    } catch (err) {
+        console.error("❌ Error updating space:", err);
+        res.status(500).json({ message: "Error updating space", error: err });
+    }
+    });
+
+    // Delete a space
+    app.delete("/spaces/:id", async (req, res) => {
+    try {
+        await Space.findByIdAndDelete(req.params.id);
+        // Optionally, also delete tasks that belonged to this space
+        await Task.deleteMany({ spaceId: req.params.id });
+        res.json({ message: "Space and associated tasks deleted" });
+    } catch (err) {
+        console.error("❌ Error deleting space:", err);
+        res.status(500).json({ message: "Error deleting space", error: err });
+    }
+});
+
+
 // Get all tasks
 app.get("/tasks", async (req, res) => {
   try {
-    console.log("📥 Fetching tasks...");
-    const tasks = await Task.find();
+    const { spaceId } = req.query;
+    const query = spaceId ? { spaceId } : {};
+    const tasks = await Task.find(query);
     res.json(tasks);
   } catch (err) {
     console.error("❌ Error fetching tasks:", err);
