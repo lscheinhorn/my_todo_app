@@ -8,27 +8,24 @@ import axios from "axios";
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
-/**
- * SubListsPage:
- * - Title with the task name (or "Loading..." if not yet fetched).
- * - Left arrow near top-left to go back directly to tasks page.
- * - Row of sub-lists, plus "Add New List" if mode=add is not set. If mode=add => show add form.
- * - Each sub-list's items are grouped by time (like "Due by 03:30" sections). Completed items go last.
- */
 function SubListsPage() {
   const { taskId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [taskName, setTaskName] = useState(null); // null => not loaded yet
+  // For the top title
+  const [taskName, setTaskName] = useState(null); // null => not loaded
+  const [taskError, setTaskError] = useState(false);
+
   const [subLists, setSubLists] = useState([]);
   const [showAddList, setShowAddList] = useState(false);
   const [newListName, setNewListName] = useState("");
+  const [editingLists, setEditingLists] = useState(false);
 
   const [selectedSubListId, setSelectedSubListId] = useState(null);
 
   // Items for the selected sub-list
-  const [items, setItems] = useState([]);
+  const [groupedItems, setGroupedItems] = useState([]); // array of {timeLabel, items:[]}
   const [expandedItems, setExpandedItems] = useState({});
   const [editingItems, setEditingItems] = useState({});
 
@@ -57,7 +54,7 @@ function SubListsPage() {
     if (selectedSubListId) {
       fetchItems(selectedSubListId);
     } else {
-      setItems([]);
+      setGroupedItems([]);
     }
   }, [selectedSubListId]);
 
@@ -65,9 +62,13 @@ function SubListsPage() {
     axios
       .get(`${TASKS_API_URL}/${taskId}`)
       .then((res) => {
-        setTaskName(res.data.text || "Untitled Task");
+        if (res.data && res.data.text) {
+          setTaskName(res.data.text);
+        } else {
+          setTaskError(true);
+        }
       })
-      .catch(() => setTaskName("Error loading task"));
+      .catch(() => setTaskError(true));
   }
 
   function fetchSubLists() {
@@ -81,28 +82,21 @@ function SubListsPage() {
     axios
       .get(`${SUBLISTS_API_URL}/${subListId}`)
       .then((res) => {
-        const grouped = groupItemsByDueTime(res.data.items || []);
-        setItems(grouped);
+        setGroupedItems(groupItemsByDueTime(res.data.items || []));
       })
       .catch((err) => console.error("Error fetching sub-list items:", err));
   }
 
-  // Group items by time, reorder completed items to bottom
-  // We'll produce an array of { timeLabel: "Due by 03:30", items: [...] }
-  function groupItemsByDueTime(itemArray) {
+  // Group items by dueTime
+  function groupItemsByDueTime(itemsArr) {
     const groups = {};
-    itemArray.forEach((item) => {
-      if (!item.dueTime) {
-        if (!groups["No Due Time"]) groups["No Due Time"] = [];
-        groups["No Due Time"].push(item);
-      } else {
-        const label = `Due by ${item.dueTime}`;
-        if (!groups[label]) groups[label] = [];
-        groups[label].push(item);
-      }
+    itemsArr.forEach((item) => {
+      const timeKey = item.dueTime ? `Due by ${item.dueTime}` : "No Due Time";
+      if (!groups[timeKey]) groups[timeKey] = [];
+      groups[timeKey].push(item);
     });
 
-    // Sort times ascending
+    // sort times ascending
     const sortedKeys = Object.keys(groups).sort((a, b) => {
       if (a === "No Due Time") return 1;
       if (b === "No Due Time") return -1;
@@ -117,7 +111,7 @@ function SubListsPage() {
       return parseTime(a) - parseTime(b);
     });
 
-    // For each group, reorder completed items to bottom
+    // reorder completed to bottom
     const result = sortedKeys.map((key) => {
       const arr = groups[key].slice().sort((a, b) => {
         if (a.completed && !b.completed) return 1;
@@ -155,6 +149,25 @@ function SubListsPage() {
     setSearchParams({ mode: "add" });
   }
 
+  // Toggle editing mode for sub-lists
+  function toggleEditingLists() {
+    setEditingLists(!editingLists);
+  }
+
+  function handleDeleteSubList(e, subListId) {
+    e.stopPropagation();
+    axios
+      .delete(`${SUBLISTS_API_URL}/${subListId}`)
+      .then(() => {
+        fetchSubLists();
+        // if the deleted sublist was selected, unselect it
+        if (subListId === selectedSubListId) {
+          setSearchParams({});
+        }
+      })
+      .catch((err) => console.error("Error deleting sub-list:", err));
+  }
+
   // Items logic
   function toggleCompleteItem(item) {
     axios
@@ -162,8 +175,7 @@ function SubListsPage() {
         completed: !item.completed,
       })
       .then((res) => {
-        const grouped = groupItemsByDueTime(res.data.items || []);
-        setItems(grouped);
+        setGroupedItems(groupItemsByDueTime(res.data.items || []));
       })
       .catch((err) => console.error("Error toggling item:", err));
   }
@@ -187,8 +199,7 @@ function SubListsPage() {
     axios
       .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`, updatedFields)
       .then((res) => {
-        const grouped = groupItemsByDueTime(res.data.items || []);
-        setItems(grouped);
+        setGroupedItems(groupItemsByDueTime(res.data.items || []));
         stopEditingItem(itemId);
       })
       .catch((err) => console.error("Error saving item edits:", err));
@@ -198,8 +209,7 @@ function SubListsPage() {
     axios
       .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
       .then((res) => {
-        const grouped = groupItemsByDueTime(res.data.items || []);
-        setItems(grouped);
+        setGroupedItems(groupItemsByDueTime(res.data.items || []));
       })
       .catch((err) => console.error("Error deleting item:", err));
   }
@@ -212,64 +222,79 @@ function SubListsPage() {
         dueTime,
       })
       .then((res) => {
-        const grouped = groupItemsByDueTime(res.data.items || []);
-        setItems(grouped);
+        setGroupedItems(groupItemsByDueTime(res.data.items || []));
       })
       .catch((err) => console.error("Error adding item:", err));
   }
 
-  // Always go straight back to tasks page
   function handleBack() {
     navigate("/");
   }
 
   return (
     <div className="app-container" style={{ position: "relative" }}>
-      {/* A bigger arrow, not too far left */}
       <button
         onClick={handleBack}
         style={{
           position: "absolute",
           top: "20px",
           left: "20px",
-          fontSize: "1.5rem",
+          fontSize: "1.2rem",
           background: "none",
           border: "none",
           color: "#fff",
           cursor: "pointer",
         }}
-        aria-label="Go back to tasks"
+        aria-label="Return to Tasks"
       >
-        ⬅
+        ← Return to Tasks
       </button>
 
-      <h1 style={{ marginTop: "0" }}>
-        {taskName === null ? "Loading..." : `Task: ${taskName}`}
-      </h1>
+      {taskError ? (
+        <h1>Error loading task</h1>
+      ) : taskName === null ? (
+        <h1>Loading...</h1>
+      ) : (
+        <h1>Task: {taskName}</h1>
+      )}
 
-      {/* Row of sub-lists */}
-      <div className="sub-lists-row">
+      {/* Row of sub-lists, with "Edit Lists" toggle */}
+      <div
+        className={`sub-lists-row ${editingLists ? "editing-lists" : ""}`}
+        style={{ flexWrap: "wrap" }}
+      >
         {subLists.map((sub) => (
           <div
             key={sub._id}
-            className={`space-item ${
+            className={`sub-list-item ${
               sub._id === selectedSubListId ? "selected" : ""
             }`}
             onClick={() => selectSubList(sub._id)}
           >
             {sub.name}
+            <button
+              className="delete-sublist-btn"
+              onClick={(e) => handleDeleteSubList(e, sub._id)}
+              aria-label="Delete Sub-list"
+            >
+              X
+            </button>
           </div>
         ))}
 
-        <div className="space-item" onClick={selectAddNewList}>
+        <div className="sub-list-item" onClick={selectAddNewList}>
           Add New List
         </div>
+
+        <button type="button" onClick={toggleEditingLists} style={{ marginLeft: "10px" }}>
+          {editingLists ? "Stop Editing" : "Edit Lists"}
+        </button>
       </div>
 
       {showAddList && (
         <form onSubmit={addSubList} style={{ marginBottom: "20px" }}>
           <input
-            className="add-space-input"
+            className="add-sublist-input"
             placeholder="Sub-list name..."
             value={newListName}
             onChange={(e) => setNewListName(e.target.value)}
@@ -278,10 +303,9 @@ function SubListsPage() {
         </form>
       )}
 
-      {/* If a sub-list is selected, show items grouped by time */}
       {selectedSubListId && !showAddList && (
         <SubListItems
-          items={items}
+          groupedItems={groupedItems}
           expandedItems={expandedItems}
           editingItems={editingItems}
           onToggleComplete={toggleCompleteItem}
@@ -298,12 +322,13 @@ function SubListsPage() {
 }
 
 /**
- * SubListItems:
- * - Grouped by time (like "No Due Time," "Due by 03:30," etc.).
- * - Each group has items with a checkbox, "Show More," "Edit," "Delete," and "Created date."
+ * SubListItems: 
+ * We have an array of groups like [{timeLabel: "...", items: [...]}].
+ * Each group is labeled, and items are displayed with custom checkboxes, 
+ * show more, edit, delete, created date, etc.
  */
 function SubListItems({
-  items,
+  groupedItems,
   expandedItems,
   editingItems,
   onToggleComplete,
@@ -388,8 +413,8 @@ function SubListItems({
         <button type="submit">Add</button>
       </form>
 
-      {/* 'items' is an array of groups: [{timeLabel, items:[]}, ...] */}
-      {items.map((group) => (
+      {/* groupedItems => array of {timeLabel, items:[]} */}
+      {groupedItems.map((group) => (
         <div key={group.timeLabel} style={{ marginBottom: "20px" }}>
           <h3 className="time-group-label">{group.timeLabel}</h3>
           <ul className="tasks-list">
@@ -407,7 +432,7 @@ function SubListItems({
                   className={`tasks-list-item ${priorityClass}`}
                   tabIndex={-1}
                 >
-                  {/* Mark complete on the left (green check) */}
+                  {/* Custom check for item completion */}
                   <input
                     type="checkbox"
                     className="mark-complete-checkbox"
@@ -416,7 +441,7 @@ function SubListItems({
                     aria-label={`Mark ${item.text} as complete`}
                   />
 
-                  {/* Main content clickable to expand */}
+                  {/* Title row clickable to expand */}
                   <div
                     className="task-main-content"
                     onClick={() => onToggleExpand(item._id)}
@@ -433,23 +458,26 @@ function SubListItems({
                     </div>
                   </div>
 
-                  {/* Expanded row */}
                   {isExpanded && (
                     <div className="expanded-row">
                       {!isEditing ? (
                         <div className="actions-row">
-                          {/* Delete icon on the far left */}
+                          {/* Trash can on far right */}
                           <button
                             className="delete-btn"
                             onClick={() => onDeleteItem(item._id)}
-                            title="Delete Item"
+                            aria-label="Delete Item"
+                            style={{ marginLeft: "auto" }}
                           >
                             🗑
                           </button>
+
                           <button onClick={() => onStartEdit(item._id)}>Edit</button>
 
-                          {/* Created date on the right */}
-                          <div className="task-created-date" style={{ marginLeft: "auto" }}>
+                          <div
+                            className="task-created-date"
+                            style={{ marginLeft: "auto", order: -1 }}
+                          >
                             Created:{" "}
                             {new Date(item.createdAt).toLocaleString(undefined, {
                               year: "numeric",
@@ -467,7 +495,10 @@ function SubListItems({
                             onSave={(updated) => onSaveEdit(item._id, updated)}
                             onCancel={() => onStopEdit(item._id)}
                           />
-                          <div className="task-created-date" style={{ textAlign: "right" }}>
+                          <div
+                            className="task-created-date"
+                            style={{ textAlign: "right" }}
+                          >
                             Created:{" "}
                             {new Date(item.createdAt).toLocaleString(undefined, {
                               year: "numeric",
@@ -491,7 +522,6 @@ function SubListItems({
   );
 }
 
-/** ItemEditForm: inline edit for text, priority, dueTime, completed */
 function ItemEditForm({ item, onSave, onCancel }) {
   const [editText, setEditText] = useState(item.text);
   const [editPriority, setEditPriority] = useState(item.priority || "none");

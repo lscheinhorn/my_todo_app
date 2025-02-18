@@ -343,7 +343,7 @@ function TasksPage() {
                     className={`tasks-list-item ${priorityClass}`}
                     tabIndex={-1}
                   >
-                    {/* Mark as complete */}
+                    {/* Custom check inline with the title */}
                     <input
                       type="checkbox"
                       className="mark-complete-checkbox"
@@ -352,7 +352,7 @@ function TasksPage() {
                       aria-label={`Mark ${task.text} as complete`}
                     />
 
-                    {/* Main content clickable to expand */}
+                    {/* Title row is clickable to expand */}
                     <div
                       className="task-main-content"
                       onClick={() => toggleExpandTask(task._id)}
@@ -380,21 +380,29 @@ function TasksPage() {
                           </div>
                         ) : !isEditing ? (
                           <div className="actions-row">
-                            {/* Delete icon at far left */}
+                            {/* Delete icon on far right */}
                             <button
                               className="delete-btn"
                               onClick={() => deleteTask(task._id)}
-                              title="Delete Task"
+                              aria-label="Delete Task"
+                              style={{ marginLeft: "auto" }}
                             >
                               🗑
                             </button>
+
                             <button onClick={() => startEditingTask(task._id)}>
                               Edit
                             </button>
+
                             <SubListsDropdown taskId={task._id} />
 
-                            {/* Created date on the right */}
-                            <div className="task-created-date" style={{ marginLeft: "auto" }}>
+                            {/* Created date on the far right if needed, 
+                                but we already placed the delete on far right. 
+                                Let's keep the date just before the delete or after, your choice. */}
+                            <div
+                              className="task-created-date"
+                              style={{ marginLeft: "auto", order: -1 }}
+                            >
                               Created:{" "}
                               {new Date(task.createdAt).toLocaleString(undefined, {
                                 year: "numeric",
@@ -414,7 +422,10 @@ function TasksPage() {
                               }
                               onCancel={() => stopEditingTask(task._id)}
                             />
-                            <div className="task-created-date" style={{ textAlign: "right" }}>
+                            <div
+                              className="task-created-date"
+                              style={{ textAlign: "right" }}
+                            >
                               Created:{" "}
                               {new Date(task.createdAt).toLocaleString(undefined, {
                                 year: "numeric",

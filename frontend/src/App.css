@@ -25,15 +25,15 @@ html, body {
   font-size: 1.8rem;
 }
 
-/* Spaces inline row */
-.spaces-inline {
+/* Spaces or sub-lists inline row */
+.spaces-inline, .sub-lists-row {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 20px;
 }
 
-.space-item {
+.space-item, .sub-list-item {
   background-color: #2C2C2E;
   padding: 8px 12px;
   border-radius: 4px;
@@ -41,11 +41,11 @@ html, body {
   border: 1px solid transparent;
 }
 
-.space-item.selected {
+.space-item.selected, .sub-list-item.selected {
   border: 1px solid #61dafb;
 }
 
-.add-space-input {
+.add-space-input, .add-sublist-input {
   padding: 6px;
   border: 1px solid #333;
   border-radius: 4px;
@@ -54,8 +54,36 @@ html, body {
   margin-right: 10px;
 }
 
+/* 
+  If we are in "edit spaces" or "edit lists" mode, we show an "X" next to each item. 
+  Otherwise, we hide it. We'll do this by toggling a class in React. 
+*/
+.delete-space-btn, .delete-sublist-btn {
+  display: none; /* hidden by default */
+  margin-left: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+.delete-space-btn:hover, .delete-sublist-btn:hover {
+  background-color: #ff0000;
+  color: #fff;
+}
+
+/* 
+  If we have a parent container with a class like .editing-spaces or .editing-lists, 
+  we show the X buttons. We'll do that in React by toggling a class. 
+*/
+.editing-spaces .delete-space-btn {
+  display: inline;
+}
+.editing-lists .delete-sublist-btn {
+  display: inline;
+}
+
 /* New Task Form */
-.new-task-form {
+.new-task-form, .new-item-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -64,12 +92,12 @@ html, body {
   margin-bottom: 20px;
 }
 
-.new-task-form .form-row {
+.new-task-form .form-row, .new-item-form .form-row {
   display: flex;
   gap: 10px;
 }
 
-.new-task-form input[type="text"] {
+.new-task-form input[type="text"], .new-item-form input[type="text"] {
   flex: 1;
   padding: 8px;
   border-radius: 4px;
@@ -79,7 +107,9 @@ html, body {
 }
 
 .new-task-form select,
-.new-task-form input[type="date"] {
+.new-task-form input[type="date"],
+.new-item-form select,
+.new-item-form input[type="time"] {
   background-color: #2C2C2E;
   color: #fff;
   border: 1px solid #444;
@@ -87,7 +117,7 @@ html, body {
   padding: 6px;
 }
 
-.new-task-form button {
+.new-task-form button, .new-item-form button {
   padding: 8px 12px;
   border: 1px solid #444;
   background-color: #3A3A3C;
@@ -97,8 +127,7 @@ html, body {
 }
 
 /* Sorting & Bulk Edit Rows */
-.sort-row,
-.bulk-edit-row {
+.sort-row, .bulk-edit-row {
   margin-bottom: 20px;
   display: flex;
   align-items: center;
@@ -139,7 +168,7 @@ html, body {
   color: #61dafb;
 }
 
-.tasks-list {
+.tasks-list, .items-list {
   list-style-type: none;
   margin: 0;
   padding: 0;
@@ -156,8 +185,8 @@ html, body {
   border-left-width: 8px;
 }
 
-/* Task Items */
-.tasks-list-item {
+/* Task or item row */
+.tasks-list-item, .items-list-item {
   margin-bottom: 6px;
   border-radius: 4px;
   background-color: #2C2C2E;
@@ -166,22 +195,46 @@ html, body {
   outline: none;
 }
 
-.tasks-list-item:focus-within {
+.tasks-list-item:focus-within, .items-list-item:focus-within {
   outline: 2px dashed #61dafb;
   outline-offset: 4px;
 }
 
-/* Mark complete on the left - green check */
+/* 
+  Custom checkbox for "Mark as complete"
+  We hide the default box and draw our own. 
+*/
 .mark-complete-checkbox {
+  appearance: none;
+  width: 24px;
+  height: 24px;
   margin-right: 10px;
   cursor: pointer;
-  accent-color: #00ff00; /* green check in modern browsers */
+  position: relative;
+  background-color: #2C2C2E;
+  border: 2px solid #888;
+  border-radius: 4px;
 }
 
-/* The main content is clickable to expand */
+.mark-complete-checkbox:checked {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.mark-complete-checkbox:checked::after {
+  content: "✔";
+  color: #00FF00; /* Large green check */
+  font-size: 1.4rem;
+  position: absolute;
+  top: -4px;
+  left: 3px;
+}
+
+/* Collapsed row for tasks or items */
 .task-main-content {
   cursor: pointer;
   margin-bottom: 6px;
+  /* We'll rely on a flex container if needed in the parent */
 }
 
 .collapsed-row {
@@ -194,6 +247,7 @@ html, body {
   margin-right: 10px;
 }
 
+/* Show More arrow button */
 .show-more-btn {
   background: none;
   border: none;
@@ -218,16 +272,19 @@ html, body {
   align-items: center;
 }
 
-/* Delete button: trash can icon. Turn red on hover. */
+/* Trash can icon on far right or left, with bright red background on hover */
 .delete-btn {
   background: none;
   border: none;
   color: #fff;
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  padding: 6px;
+  border-radius: 4px;
 }
 .delete-btn:hover {
-  color: #ff375f;
+  background-color: #FF0000; /* bright red background */
+  color: #fff;
 }
 
 /* Created date on the right */
@@ -260,56 +317,7 @@ html, body {
   padding: 6px;
 }
 
-/* Sub-lists dropdown row */
-.sub-lists-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.sub-lists-row select {
-  background-color: #2C2C2E;
-  color: #fff;
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 4px;
-  cursor: pointer;
-}
-
-/* Sub-list items also get priority highlighting */
-.items-list {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-}
-
-.items-list-item {
-  margin-bottom: 6px;
-  border-radius: 4px;
-  background-color: #2C2C2E;
-  padding: 10px;
-  outline: none;
-}
-
-.items-list-item:focus-within {
-  outline: 2px dashed #61dafb;
-  outline-offset: 4px;
-}
-
-/* Mark complete on the left for sub-list items, also green check */
-.mark-complete-item-checkbox {
-  margin-right: 10px;
-  cursor: pointer;
-  accent-color: #00ff00;
-}
-
-.item-main-content {
-  cursor: pointer;
-  margin-bottom: 6px;
-}
-
-/* Time-based grouping in sub-lists, e.g. "Due by 03:30" heading */
+/* Time-based grouping label in sub-lists */
 .time-group-label {
   margin: 10px 0;
   font-size: 1.1rem;
