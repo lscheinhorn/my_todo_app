@@ -164,7 +164,6 @@ html, body {
   position: relative;
   padding: 10px;
   outline: none;
-  /* Removed the flex so expanded content can appear below the title */
 }
 
 .tasks-list-item:focus-within {
@@ -172,17 +171,17 @@ html, body {
   outline-offset: 4px;
 }
 
-/* Mark complete on the left */
+/* Mark complete on the left - green check */
 .mark-complete-checkbox {
   margin-right: 10px;
-  transform: scale(1.2);
   cursor: pointer;
+  accent-color: #00ff00; /* green check in modern browsers */
 }
 
 /* The main content is clickable to expand */
 .task-main-content {
   cursor: pointer;
-  margin-bottom: 6px; /* space below the row */
+  margin-bottom: 6px;
 }
 
 .collapsed-row {
@@ -195,7 +194,6 @@ html, body {
   margin-right: 10px;
 }
 
-/* Show More arrow button */
 .show-more-btn {
   background: none;
   border: none;
@@ -217,34 +215,26 @@ html, body {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
 }
 
-/* "Edit" -> "Lists" -> "Delete" order */
-.actions-row button {
-  padding: 6px 10px;
-  border: 1px solid #444;
-  background-color: #3A3A3C;
+/* Delete button: trash can icon. Turn red on hover. */
+.delete-btn {
+  background: none;
+  border: none;
   color: #fff;
-  border-radius: 4px;
   cursor: pointer;
+  font-size: 1.1rem;
+}
+.delete-btn:hover {
+  color: #ff375f;
 }
 
-/* Created date on the right in expanded view */
+/* Created date on the right */
 .task-created-date {
   text-align: right;
   font-size: 0.9rem;
   color: #aaa;
-}
-
-/* Destructive and restore color */
-.delete-btn {
-  background-color: #FF375F;
-  border: none;
-}
-
-.restore-btn {
-  background-color: #64D2FF;
-  border: none;
 }
 
 /* Edit form */
@@ -300,7 +290,6 @@ html, body {
   background-color: #2C2C2E;
   padding: 10px;
   outline: none;
-  display: block; /* each item is block so expanded can appear below */
 }
 
 .items-list-item:focus-within {
@@ -308,15 +297,21 @@ html, body {
   outline-offset: 4px;
 }
 
-/* Mark complete on left for sub-list items */
+/* Mark complete on the left for sub-list items, also green check */
 .mark-complete-item-checkbox {
   margin-right: 10px;
-  transform: scale(1.2);
   cursor: pointer;
+  accent-color: #00ff00;
 }
 
-/* The main content is clickable to expand */
 .item-main-content {
   cursor: pointer;
   margin-bottom: 6px;
+}
+
+/* Time-based grouping in sub-lists, e.g. "Due by 03:30" heading */
+.time-group-label {
+  margin: 10px 0;
+  font-size: 1.1rem;
+  color: #61dafb;
 }

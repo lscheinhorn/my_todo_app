@@ -147,6 +147,7 @@ function TasksPage() {
   function getSortedTasks() {
     const sorted = [...tasks];
     sorted.sort((a, b) => {
+      // completed last
       if (a.completed && !b.completed) return 1;
       if (!a.completed && b.completed) return -1;
 
@@ -226,9 +227,9 @@ function TasksPage() {
     });
   }
 
-  function getPriorityLabel(task) {
-    if (task.priority === "high") return "High Priority";
-    if (task.priority === "priority") return "Priority";
+  function getPriorityLabel(priority) {
+    if (priority === "high") return "High Priority";
+    if (priority === "priority") return "Priority";
     return "";
   }
 
@@ -330,13 +331,11 @@ function TasksPage() {
               {group.tasks.map((task) => {
                 const isExpanded = expandedTasks[task._id] || bulkEdit;
                 const isEditing = editingTasks[task._id] || false;
-                const priorityClass =
-                  task.priority === "high"
-                    ? "priority-high"
-                    : task.priority === "priority"
-                    ? "priority-normal"
-                    : "";
-                const priorityLabel = getPriorityLabel(task);
+                const priorityLabel = getPriorityLabel(task.priority);
+                let priorityClass = "";
+                if (task.priority === "high") priorityClass = "priority-high";
+                else if (task.priority === "priority")
+                  priorityClass = "priority-normal";
 
                 return (
                   <li
@@ -344,7 +343,7 @@ function TasksPage() {
                     className={`tasks-list-item ${priorityClass}`}
                     tabIndex={-1}
                   >
-                    {/* Mark complete on the left */}
+                    {/* Mark as complete */}
                     <input
                       type="checkbox"
                       className="mark-complete-checkbox"
@@ -353,7 +352,7 @@ function TasksPage() {
                       aria-label={`Mark ${task.text} as complete`}
                     />
 
-                    {/* The main content is clickable to expand */}
+                    {/* Main content clickable to expand */}
                     <div
                       className="task-main-content"
                       onClick={() => toggleExpandTask(task._id)}
@@ -370,7 +369,7 @@ function TasksPage() {
                       </div>
                     </div>
 
-                    {/* If expanded, show actions, created date, etc. */}
+                    {/* Expanded row */}
                     {isExpanded && (
                       <div className="expanded-row">
                         {selectedSpaceId === "DELETED" ? (
@@ -379,30 +378,43 @@ function TasksPage() {
                               Restore
                             </button>
                           </div>
-                        ) : (
-                          <>
-                            {!isEditing ? (
-                              <div className="actions-row">
-                                <button onClick={() => startEditingTask(task._id)}>
-                                  Edit
-                                </button>
-                                <SubListsDropdown taskId={task._id} />
-                                <button className="delete-btn" onClick={() => deleteTask(task._id)}>
-                                  Delete
-                                </button>
-                              </div>
-                            ) : (
-                              <TaskEditForm
-                                task={task}
-                                onSave={(updatedFields) =>
-                                  saveTaskEdits(task._id, updatedFields)
-                                }
-                                onCancel={() => stopEditingTask(task._id)}
-                              />
-                            )}
+                        ) : !isEditing ? (
+                          <div className="actions-row">
+                            {/* Delete icon at far left */}
+                            <button
+                              className="delete-btn"
+                              onClick={() => deleteTask(task._id)}
+                              title="Delete Task"
+                            >
+                              🗑
+                            </button>
+                            <button onClick={() => startEditingTask(task._id)}>
+                              Edit
+                            </button>
+                            <SubListsDropdown taskId={task._id} />
 
                             {/* Created date on the right */}
-                            <div className="task-created-date">
+                            <div className="task-created-date" style={{ marginLeft: "auto" }}>
+                              Created:{" "}
+                              {new Date(task.createdAt).toLocaleString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <TaskEditForm
+                              task={task}
+                              onSave={(updatedFields) =>
+                                saveTaskEdits(task._id, updatedFields)
+                              }
+                              onCancel={() => stopEditingTask(task._id)}
+                            />
+                            <div className="task-created-date" style={{ textAlign: "right" }}>
                               Created:{" "}
                               {new Date(task.createdAt).toLocaleString(undefined, {
                                 year: "numeric",
@@ -427,7 +439,7 @@ function TasksPage() {
   );
 }
 
-/** Inline edit form for a task: text, priority, due date, etc. */
+/** Inline edit form for a task: text, priority, due date, completed */
 function TaskEditForm({ task, onSave, onCancel }) {
   const [editText, setEditText] = useState(task.text);
   const [editPriority, setEditPriority] = useState(task.priority || "none");

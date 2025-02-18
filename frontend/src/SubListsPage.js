@@ -10,25 +10,24 @@ const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
 /**
  * SubListsPage:
- * - Shows top-left "←" back button
- * - If mode=add, user sees "Add new sub-list" form
- * - If listId=xxx, user sees that sub-list's items
- * - Completed items reorder to the bottom
- * - Created date is shown in expanded view
+ * - Title with the task name (or "Loading..." if not yet fetched).
+ * - Left arrow near top-left to go back directly to tasks page.
+ * - Row of sub-lists, plus "Add New List" if mode=add is not set. If mode=add => show add form.
+ * - Each sub-list's items are grouped by time (like "Due by 03:30" sections). Completed items go last.
  */
 function SubListsPage() {
   const { taskId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [taskName, setTaskName] = useState("Loading...");
+  const [taskName, setTaskName] = useState(null); // null => not loaded yet
   const [subLists, setSubLists] = useState([]);
   const [showAddList, setShowAddList] = useState(false);
   const [newListName, setNewListName] = useState("");
 
   const [selectedSubListId, setSelectedSubListId] = useState(null);
 
-  // Items
+  // Items for the selected sub-list
   const [items, setItems] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
   const [editingItems, setEditingItems] = useState({});
@@ -38,11 +37,9 @@ function SubListsPage() {
     fetchSubLists();
   }, [taskId]);
 
-  // Check query params
   useEffect(() => {
     const mode = searchParams.get("mode");
     const listId = searchParams.get("listId");
-
     if (mode === "add") {
       setShowAddList(true);
       setSelectedSubListId(null);
@@ -56,7 +53,6 @@ function SubListsPage() {
     }
   }, [searchParams]);
 
-  // Whenever selectedSubListId changes, fetch items
   useEffect(() => {
     if (selectedSubListId) {
       fetchItems(selectedSubListId);
@@ -71,7 +67,7 @@ function SubListsPage() {
       .then((res) => {
         setTaskName(res.data.text || "Untitled Task");
       })
-      .catch((err) => console.error("Error fetching task name:", err));
+      .catch(() => setTaskName("Error loading task"));
   }
 
   function fetchSubLists() {
@@ -85,21 +81,53 @@ function SubListsPage() {
     axios
       .get(`${SUBLISTS_API_URL}/${subListId}`)
       .then((res) => {
-        // reorder completed items to bottom
-        const reordered = reorderCompleted(res.data.items || []);
-        setItems(reordered);
+        const grouped = groupItemsByDueTime(res.data.items || []);
+        setItems(grouped);
       })
       .catch((err) => console.error("Error fetching sub-list items:", err));
   }
 
-  // Reorder completed items to the bottom
-  function reorderCompleted(itemArray) {
-    return itemArray.slice().sort((a, b) => {
-      if (a.completed && !b.completed) return 1;
-      if (!a.completed && b.completed) return -1;
-      // then by creation date
-      return new Date(a.createdAt) - new Date(b.createdAt);
+  // Group items by time, reorder completed items to bottom
+  // We'll produce an array of { timeLabel: "Due by 03:30", items: [...] }
+  function groupItemsByDueTime(itemArray) {
+    const groups = {};
+    itemArray.forEach((item) => {
+      if (!item.dueTime) {
+        if (!groups["No Due Time"]) groups["No Due Time"] = [];
+        groups["No Due Time"].push(item);
+      } else {
+        const label = `Due by ${item.dueTime}`;
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(item);
+      }
     });
+
+    // Sort times ascending
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === "No Due Time") return 1;
+      if (b === "No Due Time") return -1;
+      // parse "Due by HH:MM"
+      const parseTime = (str) => {
+        const match = str.match(/(\d{1,2}):(\d{2})$/);
+        if (!match) return null;
+        const hh = parseInt(match[1], 10);
+        const mm = parseInt(match[2], 10);
+        return hh * 60 + mm;
+      };
+      return parseTime(a) - parseTime(b);
+    });
+
+    // For each group, reorder completed items to bottom
+    const result = sortedKeys.map((key) => {
+      const arr = groups[key].slice().sort((a, b) => {
+        if (a.completed && !b.completed) return 1;
+        if (!a.completed && b.completed) return -1;
+        // then by created date
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      });
+      return { timeLabel: key, items: arr };
+    });
+    return result;
   }
 
   function addSubList(e) {
@@ -114,13 +142,11 @@ function SubListsPage() {
         setNewListName("");
         setShowAddList(false);
         fetchSubLists();
-        // select the new sub-list
         setSearchParams({ listId: res.data._id });
       })
       .catch((err) => console.error("Error creating sub-list:", err));
   }
 
-  // Navigation logic for sub-lists
   function selectSubList(listId) {
     setSearchParams({ listId });
   }
@@ -136,8 +162,8 @@ function SubListsPage() {
         completed: !item.completed,
       })
       .then((res) => {
-        const reordered = reorderCompleted(res.data.items || []);
-        setItems(reordered);
+        const grouped = groupItemsByDueTime(res.data.items || []);
+        setItems(grouped);
       })
       .catch((err) => console.error("Error toggling item:", err));
   }
@@ -161,8 +187,8 @@ function SubListsPage() {
     axios
       .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`, updatedFields)
       .then((res) => {
-        const reordered = reorderCompleted(res.data.items || []);
-        setItems(reordered);
+        const grouped = groupItemsByDueTime(res.data.items || []);
+        setItems(grouped);
         stopEditingItem(itemId);
       })
       .catch((err) => console.error("Error saving item edits:", err));
@@ -172,8 +198,8 @@ function SubListsPage() {
     axios
       .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
       .then((res) => {
-        const reordered = reorderCompleted(res.data.items || []);
-        setItems(reordered);
+        const grouped = groupItemsByDueTime(res.data.items || []);
+        setItems(grouped);
       })
       .catch((err) => console.error("Error deleting item:", err));
   }
@@ -186,52 +212,42 @@ function SubListsPage() {
         dueTime,
       })
       .then((res) => {
-        const reordered = reorderCompleted(res.data.items || []);
-        setItems(reordered);
+        const grouped = groupItemsByDueTime(res.data.items || []);
+        setItems(grouped);
       })
       .catch((err) => console.error("Error adding item:", err));
   }
 
-  // Back button logic
-  // If mode=add, pressing back cancels add mode. If no sub-list selected, go back to tasks page
+  // Always go straight back to tasks page
   function handleBack() {
-    const mode = searchParams.get("mode");
-    const listId = searchParams.get("listId");
-
-    if (mode === "add") {
-      // remove mode=add, remain on sub-lists page
-      setSearchParams({});
-    } else if (!listId) {
-      // no list selected, go back to tasks page
-      navigate("/");
-    } else {
-      // if a list is selected, remove it => go to sub-lists main
-      setSearchParams({});
-    }
+    navigate("/");
   }
 
   return (
-    <div className="app-container">
-      {/* Top-left arrow for back */}
+    <div className="app-container" style={{ position: "relative" }}>
+      {/* A bigger arrow, not too far left */}
       <button
         onClick={handleBack}
         style={{
           position: "absolute",
           top: "20px",
           left: "20px",
-          fontSize: "1.2rem",
+          fontSize: "1.5rem",
           background: "none",
           border: "none",
           color: "#fff",
           cursor: "pointer",
         }}
+        aria-label="Go back to tasks"
       >
-        ←
+        ⬅
       </button>
 
-      <h1 style={{ marginTop: "0" }}>Task: {taskName}</h1>
+      <h1 style={{ marginTop: "0" }}>
+        {taskName === null ? "Loading..." : `Task: ${taskName}`}
+      </h1>
 
-      {/* Horizontal row of sub-lists. "Add New List" is a button at left. */}
+      {/* Row of sub-lists */}
       <div className="sub-lists-row">
         {subLists.map((sub) => (
           <div
@@ -250,7 +266,6 @@ function SubListsPage() {
         </div>
       </div>
 
-      {/* If mode=add, show "Add Sub-List" form */}
       {showAddList && (
         <form onSubmit={addSubList} style={{ marginBottom: "20px" }}>
           <input
@@ -263,7 +278,7 @@ function SubListsPage() {
         </form>
       )}
 
-      {/* If a sub-list is selected, show items */}
+      {/* If a sub-list is selected, show items grouped by time */}
       {selectedSubListId && !showAddList && (
         <SubListItems
           items={items}
@@ -283,9 +298,9 @@ function SubListsPage() {
 }
 
 /**
- * SubListItems: tasks-like UI for sub-list items
- * - reorder completed items to bottom
- * - show created date in expanded
+ * SubListItems:
+ * - Grouped by time (like "No Due Time," "Due by 03:30," etc.).
+ * - Each group has items with a checkbox, "Show More," "Edit," "Delete," and "Created date."
  */
 function SubListItems({
   items,
@@ -314,9 +329,9 @@ function SubListItems({
     setNewItemDueTime("");
   }
 
-  function getPriorityLabel(item) {
-    if (item.priority === "high") return "High Priority";
-    if (item.priority === "priority") return "Priority";
+  function getPriorityLabel(priority) {
+    if (priority === "high") return "High Priority";
+    if (priority === "priority") return "Priority";
     return "";
   }
 
@@ -373,93 +388,110 @@ function SubListItems({
         <button type="submit">Add</button>
       </form>
 
-      <ul className="tasks-list">
-        {items.map((item) => {
-          const isExpanded = expandedItems[item._id] || false;
-          const isEditing = editingItems[item._id] || false;
-          const priorityClass =
-            item.priority === "high"
-              ? "priority-high"
-              : item.priority === "priority"
-              ? "priority-normal"
-              : "";
-          const priorityLabel = getPriorityLabel(item);
+      {/* 'items' is an array of groups: [{timeLabel, items:[]}, ...] */}
+      {items.map((group) => (
+        <div key={group.timeLabel} style={{ marginBottom: "20px" }}>
+          <h3 className="time-group-label">{group.timeLabel}</h3>
+          <ul className="tasks-list">
+            {group.items.map((item) => {
+              const isExpanded = expandedItems[item._id] || false;
+              const isEditing = editingItems[item._id] || false;
+              const priorityLabel = getPriorityLabel(item.priority);
+              let priorityClass = "";
+              if (item.priority === "high") priorityClass = "priority-high";
+              else if (item.priority === "priority") priorityClass = "priority-normal";
 
-          return (
-            <li
-              key={item._id}
-              className={`tasks-list-item ${priorityClass}`}
-              tabIndex={-1}
-            >
-              {/* Mark complete checkbox */}
-              <input
-                type="checkbox"
-                className="mark-complete-checkbox"
-                checked={item.completed}
-                onChange={() => onToggleComplete(item)}
-                aria-label={`Mark ${item.text} as complete`}
-              />
+              return (
+                <li
+                  key={item._id}
+                  className={`tasks-list-item ${priorityClass}`}
+                  tabIndex={-1}
+                >
+                  {/* Mark complete on the left (green check) */}
+                  <input
+                    type="checkbox"
+                    className="mark-complete-checkbox"
+                    checked={item.completed}
+                    onChange={() => onToggleComplete(item)}
+                    aria-label={`Mark ${item.text} as complete`}
+                  />
 
-              {/* Main content clickable to expand */}
-              <div
-                className="task-main-content"
-                onClick={() => onToggleExpand(item._id)}
-                aria-expanded={isExpanded}
-              >
-                <div className="collapsed-row">
-                  <div className="text-with-priority">
-                    {item.text}
-                    {priorityLabel && ` (${priorityLabel})`}
-                  </div>
-                  <button className="show-more-btn">
-                    {isExpanded ? "▲" : "▼"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Expanded row */}
-              {isExpanded && (
-                <div className="expanded-row">
-                  {!isEditing ? (
-                    <div className="actions-row">
-                      <button onClick={() => onStartEdit(item._id)}>Edit</button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => onDeleteItem(item._id)}
-                      >
-                        Delete
-                      </button>
-
-                      {/* Created date on the right */}
-                      <div className="task-created-date">
-                        Created:{" "}
-                        {new Date(item.createdAt).toLocaleString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                  {/* Main content clickable to expand */}
+                  <div
+                    className="task-main-content"
+                    onClick={() => onToggleExpand(item._id)}
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="collapsed-row">
+                      <div className="text-with-priority">
+                        {item.text}
+                        {priorityLabel && ` (${priorityLabel})`}
                       </div>
+                      <button className="show-more-btn">
+                        {isExpanded ? "▲" : "▼"}
+                      </button>
                     </div>
-                  ) : (
-                    <ItemEditForm
-                      item={item}
-                      onSave={(updated) => onSaveEdit(item._id, updated)}
-                      onCancel={() => onStopEdit(item._id)}
-                    />
+                  </div>
+
+                  {/* Expanded row */}
+                  {isExpanded && (
+                    <div className="expanded-row">
+                      {!isEditing ? (
+                        <div className="actions-row">
+                          {/* Delete icon on the far left */}
+                          <button
+                            className="delete-btn"
+                            onClick={() => onDeleteItem(item._id)}
+                            title="Delete Item"
+                          >
+                            🗑
+                          </button>
+                          <button onClick={() => onStartEdit(item._id)}>Edit</button>
+
+                          {/* Created date on the right */}
+                          <div className="task-created-date" style={{ marginLeft: "auto" }}>
+                            Created:{" "}
+                            {new Date(item.createdAt).toLocaleString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <ItemEditForm
+                            item={item}
+                            onSave={(updated) => onSaveEdit(item._id, updated)}
+                            onCancel={() => onStopEdit(item._id)}
+                          />
+                          <div className="task-created-date" style={{ textAlign: "right" }}>
+                            Created:{" "}
+                            {new Date(item.createdAt).toLocaleString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
 
-/** ItemEditForm: inline edit for text, priority, dueTime, plus created date is read-only */
+/** ItemEditForm: inline edit for text, priority, dueTime, completed */
 function ItemEditForm({ item, onSave, onCancel }) {
   const [editText, setEditText] = useState(item.text);
   const [editPriority, setEditPriority] = useState(item.priority || "none");
