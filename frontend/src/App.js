@@ -78,7 +78,7 @@ function App() {
 
   return (
     <div className="app-container dark-mode">
-      <h1>My To-Do List</h1>
+      <h1>Luke's To Do Lists</h1>
 
       <Spaces
         onSpaceSelect={(id) => setSelectedSpaceId(id)}
