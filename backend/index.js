@@ -8,7 +8,7 @@ const app = express();
 
 // Configure CORS properly
 const corsOptions = {
-  origin: "https://my-todo-app-frontend-catn.onrender.com", // Replace with your actual frontend
+  origin: "https://my-todo-app-frontend-catn.onrender.com", // Update to your actual frontend
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   optionsSuccessStatus: 204
@@ -58,19 +58,20 @@ const taskSchema = new mongoose.Schema({
 
 const Task = mongoose.model("Task", taskSchema);
 
-// Define Space Schema (if not already done)
+// Define Space Schema
 const spaceSchema = new mongoose.Schema({
   name: { type: String, required: true },
 });
 
 const Space = mongoose.model("Space", spaceSchema);
 
+// Root
 app.get("/", (req, res) => {
   console.log("🌍 Root API accessed");
   res.send("Welcome to the My To-Do App API!");
 });
 
-// Get all tasks (optionally filtered by spaceId via query param)
+// Get all tasks (optionally filtered by spaceId)
 app.get("/tasks", async (req, res) => {
   try {
     const { spaceId } = req.query;
@@ -90,7 +91,6 @@ app.post("/tasks", async (req, res) => {
       text: req.body.text,
       completed: req.body.completed || false,
       spaceId: req.body.spaceId || null,
-      // If client provides dueDate or priority, use them; otherwise use defaults
       dueDate: req.body.dueDate || null,
       priority: req.body.priority || "none",
     };
@@ -133,7 +133,6 @@ app.delete("/tasks/:id", async (req, res) => {
 });
 
 // Spaces endpoints
-// (If you already have these, you can keep them. Otherwise, here's an example.)
 app.get("/spaces", async (req, res) => {
   try {
     const spaces = await Space.find();

@@ -1,16 +1,16 @@
 /* App.css */
 
-/* Apply dark background to the entire screen */
+/* General dark background */
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #1C1C1E; /* Apple-like dark gray */
+  background-color: #1C1C1E;
   color: #FFFFFF;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
     Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
-.app-container.dark-mode {
+.app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -20,13 +20,60 @@ html, body {
   padding: 20px;
 }
 
-.app-container.dark-mode h1 {
+/* Headings */
+.app-container h1 {
   margin: 20px 0;
+  font-size: 1.8rem;
 }
 
-/* Sorting dropdown row */
+/* Spaces Dropdown Row */
+.spaces-row {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.spaces-row select {
+  background-color: #2C2C2E;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+/* Manage Spaces Modal/Button */
+.manage-spaces-section {
+  margin-bottom: 20px;
+}
+
+.manage-spaces-form {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.manage-spaces-form input {
+  padding: 6px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background-color: #2C2C2E;
+  color: #fff;
+}
+
+.manage-spaces-form button {
+  padding: 6px 12px;
+  border: 1px solid #444;
+  background-color: #3A3A3C;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Sorting Row */
 .sort-row {
-  margin: 10px 0;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -40,17 +87,23 @@ html, body {
   padding: 4px;
 }
 
-/* Create Task Form */
-.create-task-form {
+/* New Task Form */
+.new-task-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 100%;
   max-width: 400px;
+  width: 100%;
   margin-bottom: 20px;
 }
 
-.create-task-form input[type="text"] {
+.new-task-form .form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.new-task-form input[type="text"] {
+  flex: 1;
   padding: 8px;
   border-radius: 4px;
   border: 1px solid #333;
@@ -58,22 +111,16 @@ html, body {
   color: #fff;
 }
 
-.create-task-form select {
+.new-task-form select,
+.new-task-form input[type="date"] {
   background-color: #2C2C2E;
   color: #fff;
   border: 1px solid #444;
   border-radius: 4px;
-  padding: 4px;
+  padding: 6px;
 }
 
-.due-date-selectors {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.create-task-form button {
-  align-self: flex-start;
+.new-task-form button {
   padding: 8px 12px;
   border: 1px solid #444;
   background-color: #3A3A3C;
@@ -106,7 +153,6 @@ html, body {
 
 .tasks-list-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   background-color: #2C2C2E;
   margin-bottom: 6px;
@@ -114,12 +160,22 @@ html, body {
   padding: 10px;
 }
 
-.task-main {
+.task-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 10px;
+}
+
+.task-checkbox {
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+.task-info {
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  flex: 1;
-  margin-right: 10px;
 }
 
 .task-text {
@@ -135,58 +191,47 @@ html, body {
 }
 
 /* Priority Highlighting */
+.priority-high {
+  border-left: 6px solid #FF2D55; /* Brighter red for high priority */
+}
+
 .priority-normal {
   border-left: 6px solid yellow;
 }
 
-.priority-high {
-  border-left: 6px solid red;
+/* Edit Task Form Inline */
+.edit-task-form {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-/* Delete button (the ❌) */
+.edit-task-form select,
+.edit-task-form input[type="date"] {
+  background-color: #2C2C2E;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.edit-task-form button {
+  padding: 6px 10px;
+  border: 1px solid #444;
+  background-color: #3A3A3C;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Delete Task Button */
 .tasks-list-item button {
-  background-color: #FF375F;
+  background-color: #FF375F; /* Apple-like destructive color */
   color: #fff;
   border: none;
   border-radius: 4px;
   padding: 4px 8px;
   cursor: pointer;
-}
-
-/* Spaces Container (if you want it styled similarly) */
-.spaces-container {
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: 20px;
-}
-
-.spaces-container h2 {
-  margin-bottom: 10px;
-}
-
-.spaces-input-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.spaces-list {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-}
-
-.spaces-list-item {
-  background-color: #2C2C2E;
-  margin-bottom: 4px;
-  padding: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.spaces-list-item.selected {
-  background-color: #48484A; 
+  margin-left: 10px;
 }
