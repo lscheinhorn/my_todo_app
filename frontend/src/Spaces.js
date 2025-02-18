@@ -14,14 +14,16 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
   }, []);
 
   const fetchSpaces = () => {
-    axios.get(SPACES_API_URL)
+    axios
+      .get(SPACES_API_URL)
       .then((res) => setSpaces(res.data))
       .catch((err) => console.error("Error fetching spaces:", err));
   };
 
   const addSpace = () => {
     if (newSpaceName.trim()) {
-      axios.post(SPACES_API_URL, { name: newSpaceName })
+      axios
+        .post(SPACES_API_URL, { name: newSpaceName })
         .then(() => {
           setNewSpaceName("");
           fetchSpaces();
@@ -30,43 +32,51 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
     }
   };
 
-  const updateSpace = (id, newName) => {
-    axios.put(`${SPACES_API_URL}/${id}`, { name: newName })
-      .then(() => fetchSpaces())
-      .catch((err) => console.error("Error updating space:", err));
-  };
-
   const deleteSpace = (id) => {
-    axios.delete(`${SPACES_API_URL}/${id}`)
+    axios
+      .delete(`${SPACES_API_URL}/${id}`)
       .then(() => fetchSpaces())
       .catch((err) => console.error("Error deleting space:", err));
   };
 
   return (
-    <div>
+    <div className="spaces-container">
       <h2>Spaces</h2>
-      <input
-        value={newSpaceName}
-        onChange={(e) => setNewSpaceName(e.target.value)}
-        placeholder="New space name..."
-      />
-      <button onClick={addSpace}>Add Space</button>
+      <div className="spaces-input-row">
+        <input
+          value={newSpaceName}
+          onChange={(e) => setNewSpaceName(e.target.value)}
+          placeholder="New space name..."
+        />
+        <button onClick={addSpace}>Add Space</button>
+      </div>
 
-      <ul>
+      <ul className="spaces-list">
+        {/* “View All” item */}
+        <li
+          className={
+            selectedSpaceId === "ALL" ? "spaces-list-item selected" : "spaces-list-item"
+          }
+          onClick={() => onSpaceSelect("ALL")}
+        >
+          View All
+        </li>
+
         {spaces.map((space) => (
           <li
             key={space._id}
-            style={{
-              cursor: "pointer",
-              backgroundColor: space._id === selectedSpaceId ? "gray" : "transparent"
-            }}
+            className={
+              space._id === selectedSpaceId
+                ? "spaces-list-item selected"
+                : "spaces-list-item"
+            }
             onClick={() => onSpaceSelect(space._id)}
           >
-            {space.name}
-            {" "}
+            <div className="space-name">{space.name}</div>
             <button
+              className="delete-space-btn"
               onClick={(e) => {
-                e.stopPropagation(); // Prevent clicking the li
+                e.stopPropagation(); // Prevent selecting space
                 deleteSpace(space._id);
               }}
             >

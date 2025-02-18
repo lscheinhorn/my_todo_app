@@ -1,57 +1,150 @@
-.App {
-  text-align: center;
+/* App.css */
+
+/* Apply a dark background to the entire screen */
+body, html {
+  margin: 0;
+  padding: 0;
+  background-color: #1C1C1E; /* Apple-like dark gray */
+  color: #FFFFFF;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-
-
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.app-container.dark-mode {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  min-height: 100vh;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.App-link {
-  color: #61dafb;
+.app-container.dark-mode h1 {
+  margin: 20px 0;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Spaces Container */
+.spaces-container {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 20px;
 }
 
-.dark-mode {
-  min-height: 100vh; /* So the background covers the full screen */
-  min-width: 100%; 
-
-  background-color: #121212;
-  color: #ffffff;
+.spaces-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.dark-mode button {
-  background-color: #333333;
-  color: #ffffff;
-  border: 1px solid #444444;
+.spaces-input-row input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  background-color: #2C2C2E;
+  color: #fff;
 }
 
-/* You can add more styling here for inputs, etc. */
+.spaces-input-row button {
+  padding: 8px 12px;
+  border: 1px solid #444;
+  background-color: #3A3A3C;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.spaces-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.spaces-list-item {
+  padding: 8px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  background-color: #2C2C2E;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.spaces-list-item.selected {
+  background-color: #48484A; /* Highlight color */
+}
+
+.space-name {
+  flex: 1;
+  margin-right: 10px;
+}
+
+.delete-space-btn {
+  padding: 4px 8px;
+  border: none;
+  background-color: #ff3b30; /* Apple "Destructive" color */
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Tasks Container */
+.tasks-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.add-task-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.add-task-row input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  background-color: #2C2C2E;
+  color: #fff;
+}
+
+.add-task-row button {
+  padding: 8px 12px;
+  border: 1px solid #444;
+  background-color: #3A3A3C;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tasks-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.tasks-list-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background-color: #2C2C2E;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.tasks-list-item span {
+  cursor: pointer;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.tasks-list-item button {
+  padding: 4px 8px;
+  border: none;
+  background-color: #FF375F; /* Apple "Destructive" color for tasks too */
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
