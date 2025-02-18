@@ -1,9 +1,11 @@
+// Spaces.js
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const SPACES_API_URL = "https://my-todo-app-mujx.onrender.com/spaces";
 
-function Spaces() {
+function Spaces({ onSpaceSelect, selectedSpaceId }) {
   const [spaces, setSpaces] = useState([]);
   const [newSpaceName, setNewSpaceName] = useState("");
 
@@ -52,9 +54,15 @@ function Spaces() {
 
       <ul>
         {spaces.map((space) => (
-          <li key={space._id}>
+          <li
+            key={space._id}
+            style={{
+              cursor: "pointer",
+              backgroundColor: space._id === selectedSpaceId ? "gray" : "transparent"
+            }}
+            onClick={() => onSpaceSelect(space._id)}
+          >
             {space.name}
-            {/* Add UI to edit name or delete this space */}
           </li>
         ))}
       </ul>
