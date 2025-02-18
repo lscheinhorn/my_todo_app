@@ -63,6 +63,15 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
             onClick={() => onSpaceSelect(space._id)}
           >
             {space.name}
+            {" "}
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent clicking the li
+                deleteSpace(space._id);
+              }}
+            >
+              Delete
+            </button>
           </li>
         ))}
       </ul>

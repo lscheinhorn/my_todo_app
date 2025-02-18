@@ -11,12 +11,10 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
   const [selectedSpaceId, setSelectedSpaceId] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
 
   // Fetch tasks from backend, filtering by selected space
   const fetchTasks = () => {
     if (!selectedSpaceId) {
-      // If no space is selected, you could either fetch all tasks or skip fetching
       setTasks([]);
       return;
     }
@@ -64,17 +62,10 @@ function App() {
   };
 
   return (
-    <div 
-      style={{ padding: "20px", maxWidth: "400px", margin: "auto" }}
-      className={darkMode ? "dark-mode" : ""}
-    >
-      <button onClick={() => setDarkMode(!darkMode)}>
-        Toggle Dark Mode
-      </button>
-
+    {/* Always apply dark-mode here */}
+    <div style={{ padding: "20px", maxWidth: "400px", margin: "auto" }} className="dark-mode">
       <h2>My To-Do List</h2>
 
-      {/* Pass a callback that sets the selected space ID */}
       <Spaces
         onSpaceSelect={(id) => setSelectedSpaceId(id)}
         selectedSpaceId={selectedSpaceId}
