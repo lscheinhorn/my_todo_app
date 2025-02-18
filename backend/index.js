@@ -51,7 +51,7 @@ const taskSchema = new mongoose.Schema({
     enum: ["none", "priority", "high"],
     default: "none",
   },
-  // Soft delete field
+  // Soft-delete
   deletedAt: {
     type: Date,
     default: null,
@@ -72,17 +72,15 @@ app.get("/", (req, res) => {
   res.send("Welcome to the My To-Do App API!");
 });
 
-// Get tasks (optionally by spaceId). Exclude tasks that have deletedAt != null, unless we request "deleted" space
+// Get tasks
 app.get("/tasks", async (req, res) => {
   try {
     const { spaceId } = req.query;
 
     if (spaceId === "DELETED") {
-      // Return tasks that are in the "deleted" state, sorted by most recent deletion first
-      // We can add a check to only include tasks deleted in the last 30 days if we want
+      // Show tasks with deletedAt != null in last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      // Only show tasks that have been deleted in the last 30 days
       const tasks = await Task.find({
         deletedAt: { $ne: null, $gte: thirtyDaysAgo },
       }).sort({ deletedAt: -1 });
@@ -94,7 +92,6 @@ app.get("/tasks", async (req, res) => {
     if (spaceId && spaceId !== "ALL") {
       query.spaceId = spaceId;
     }
-
     const tasks = await Task.find(query);
     res.json(tasks);
   } catch (err) {
@@ -103,7 +100,7 @@ app.get("/tasks", async (req, res) => {
   }
 });
 
-// Add a new task
+// Add task
 app.post("/tasks", async (req, res) => {
   try {
     const taskData = {
@@ -112,7 +109,7 @@ app.post("/tasks", async (req, res) => {
       spaceId: req.body.spaceId || null,
       dueDate: req.body.dueDate || null,
       priority: req.body.priority || "none",
-      deletedAt: null, // not deleted
+      deletedAt: null,
     };
     const task = new Task(taskData);
     await task.save();
@@ -123,7 +120,7 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
-// Update a task
+// Update task
 app.put("/tasks/:id", async (req, res) => {
   try {
     const updatedData = {
@@ -132,7 +129,6 @@ app.put("/tasks/:id", async (req, res) => {
       dueDate: req.body.dueDate,
       priority: req.body.priority,
     };
-    // We do not reset deletedAt here unless we specifically want to "undelete"
     const task = await Task.findByIdAndUpdate(req.params.id, updatedData, { new: true });
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
@@ -142,10 +138,9 @@ app.put("/tasks/:id", async (req, res) => {
   }
 });
 
-// Soft-delete a task
+// Soft-delete task
 app.delete("/tasks/:id", async (req, res) => {
   try {
-    // Instead of removing the document, we set deletedAt to now
     const task = await Task.findByIdAndUpdate(
       req.params.id,
       { deletedAt: Date.now() },
@@ -159,7 +154,7 @@ app.delete("/tasks/:id", async (req, res) => {
   }
 });
 
-// Undelete a task
+// Undelete task
 app.put("/tasks/:id/undelete", async (req, res) => {
   try {
     const task = await Task.findByIdAndUpdate(
@@ -167,7 +162,7 @@ app.put("/tasks/:id/undelete", async (req, res) => {
       { deletedAt: null },
       { new: true }
     );
-    if (!task) return res.status(404).json({ message: "Task not found or not deleted" });
+    if (!task) return res.status(404).json({ message: "Task not found" });
     res.json({ message: "Task restored", task });
   } catch (err) {
     console.error("❌ Error undeleting task:", err);
@@ -212,7 +207,6 @@ app.put("/spaces/:id", async (req, res) => {
 app.delete("/spaces/:id", async (req, res) => {
   try {
     await Space.findByIdAndDelete(req.params.id);
-    // Optionally, soft-delete tasks in that space:
     await Task.updateMany({ spaceId: req.params.id }, { deletedAt: Date.now() });
     res.json({ message: "Space and associated tasks deleted" });
   } catch (err) {
@@ -220,7 +214,7 @@ app.delete("/spaces/:id", async (req, res) => {
   }
 });
 
-// Example: Purge tasks older than 30 days (if you want an endpoint or a scheduled job)
+// Purge tasks older than 30 days (optional, if needed)
 app.delete("/tasks/purge-old", async (req, res) => {
   try {
     const thirtyDaysAgo = new Date();
@@ -235,6 +229,6 @@ app.delete("/tasks/purge-old", async (req, res) => {
   }
 });
 
-// Set up the server
+// Server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

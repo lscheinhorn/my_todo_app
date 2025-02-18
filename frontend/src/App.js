@@ -10,17 +10,16 @@ const SPACES_API_URL = "https://my-todo-app-mujx.onrender.com/spaces";
 function App() {
   // Spaces
   const [spaces, setSpaces] = useState([]);
-  // "ALL" or a specific spaceId or "DELETED"
   const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");
 
-  // Show/hide manage spaces form
+  // Manage spaces form
   const [showManageSpaces, setShowManageSpaces] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
 
   // Tasks
   const [tasks, setTasks] = useState([]);
   // Sorting
-  const [sortBy, setSortBy] = useState("dueDate"); // "dueDate", "priority", "createdAt"
+  const [sortBy, setSortBy] = useState("dueDate");
 
   // New task form
   const [newTaskText, setNewTaskText] = useState("");
@@ -31,15 +30,14 @@ function App() {
   // Bulk edit
   const [bulkEdit, setBulkEdit] = useState(false);
 
-  // Inline edit per task
+  // Inline edit
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editDueDate, setEditDueDate] = useState("");
   const [editPriority, setEditPriority] = useState("none");
 
-  // For collapsible tasks (optional)
-  const [expandedTasks, setExpandedTasks] = useState({}); // {taskId: true/false}
+  // Track which tasks are expanded
+  const [expandedTasks, setExpandedTasks] = useState({});
 
-  // Fetch spaces on mount
   useEffect(() => {
     fetchSpaces();
   }, []);
@@ -51,7 +49,6 @@ function App() {
       .catch((err) => console.error("Error fetching spaces:", err));
   };
 
-  // Fetch tasks whenever selectedSpaceId changes
   useEffect(() => {
     fetchTasks();
   }, [selectedSpaceId]);
@@ -65,14 +62,14 @@ function App() {
       return;
     }
     if (selectedSpaceId === "DELETED") {
-      // fetch deleted tasks
+      // Fetch deleted tasks
       axios
         .get(`${TASKS_API_URL}?spaceId=DELETED`)
         .then((res) => setTasks(res.data))
         .catch((err) => console.error("Error fetching deleted tasks:", err));
       return;
     }
-    // Otherwise, fetch tasks for a specific space
+    // Otherwise, fetch tasks for specific space
     axios
       .get(`${TASKS_API_URL}?spaceId=${selectedSpaceId}`)
       .then((res) => setTasks(res.data))
@@ -123,17 +120,15 @@ function App() {
       .catch((err) => console.error("Error adding task:", err));
   };
 
-  // Toggle complete
-  const toggleCompleteTask = (taskId) => {
-    const task = tasks.find((t) => t._id === taskId);
-    if (!task) return;
+  // Mark as complete
+  const markComplete = (task) => {
     axios
-      .put(`${TASKS_API_URL}/${taskId}`, { ...task, completed: !task.completed })
+      .put(`${TASKS_API_URL}/${task._id}`, { ...task, completed: !task.completed })
       .then(() => fetchTasks())
-      .catch((err) => console.error("Error toggling task:", err));
+      .catch((err) => console.error("Error toggling complete:", err));
   };
 
-  // Soft-delete a task
+  // Delete or Undelete
   const deleteTask = (taskId) => {
     axios
       .delete(`${TASKS_API_URL}/${taskId}`)
@@ -141,7 +136,6 @@ function App() {
       .catch((err) => console.error("Error deleting task:", err));
   };
 
-  // Undelete a task
   const undeleteTask = (taskId) => {
     axios
       .put(`${TASKS_API_URL}/${taskId}/undelete`)
@@ -149,7 +143,7 @@ function App() {
       .catch((err) => console.error("Error undeleting task:", err));
   };
 
-  // Start editing a task
+  // Start editing
   const startEditingTask = (task) => {
     setEditingTaskId(task._id);
     if (task.dueDate) {
@@ -183,7 +177,7 @@ function App() {
       .catch((err) => console.error("Error updating task:", err));
   };
 
-  // Format date for display
+  // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -239,6 +233,7 @@ function App() {
     return sorted;
   };
 
+  // Group tasks by date if sorting by dueDate
   const groupTasksByDueDate = (sortedTasks) => {
     if (sortBy !== "dueDate") {
       return [{ dateLabel: null, tasks: sortedTasks }];
@@ -282,34 +277,34 @@ function App() {
   const sortedTasks = getSortedTasks();
   const groupedTasks = groupTasksByDueDate(sortedTasks);
 
-  // Bulk edit toggles every task into edit mode
+  // Bulk Edit toggles expanded view for all tasks
   const toggleBulkEdit = () => {
     const nextValue = !bulkEdit;
     setBulkEdit(nextValue);
     if (nextValue) {
-      // Force editingTaskId to some sentinel? We'll handle multiple tasks
-      // Instead, we can handle a separate approach: show an "edit bar" on each
-      // For simplicity, let's just say we keep normal editing, but show them all expanded
       const expandMap = {};
       sortedTasks.forEach((task) => {
         expandMap[task._id] = true;
       });
       setExpandedTasks(expandMap);
+    } else {
+      setExpandedTasks({});
     }
   };
 
+  // Toggle a single task's expanded/collapsed state
   const toggleExpandTask = (taskId) => {
-    setExpandedTasks({
-      ...expandedTasks,
-      [taskId]: !expandedTasks[taskId],
-    });
+    setExpandedTasks((prev) => ({
+      ...prev,
+      [taskId]: !prev[taskId],
+    }));
   };
 
   return (
     <div className="app-container" role="main">
       <h1>My To-Do List</h1>
 
-      {/* Spaces dropdown, includes DELETED for trash */}
+      {/* Spaces dropdown */}
       <div className="spaces-row">
         <label htmlFor="spaceSelect">Space:</label>
         <select
@@ -346,27 +341,6 @@ function App() {
         </div>
       )}
 
-      {/* Sorting */}
-      <div className="sort-row">
-        <label htmlFor="sortBy">Sort By:</label>
-        <select
-          id="sortBy"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          <option value="dueDate">Due Date</option>
-          <option value="priority">Priority</option>
-          <option value="createdAt">Date Created</option>
-        </select>
-      </div>
-
-      {/* Bulk Edit */}
-      <div className="bulk-edit-row">
-        <button onClick={toggleBulkEdit}>
-          {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
-        </button>
-      </div>
-
       {/* New Task Form */}
       {selectedSpaceId !== "DELETED" && (
         <form className="new-task-form" onSubmit={addTask}>
@@ -376,12 +350,12 @@ function App() {
               placeholder="New task..."
               value={newTaskText}
               onChange={(e) => setNewTaskText(e.target.value)}
-              disabled={selectedSpaceId === "ALL" || selectedSpaceId === "DELETED"}
+              disabled={selectedSpaceId === "ALL"}
             />
             <select
               value={newTaskPriority}
               onChange={(e) => setNewTaskPriority(e.target.value)}
-              disabled={selectedSpaceId === "ALL" || selectedSpaceId === "DELETED"}
+              disabled={selectedSpaceId === "ALL"}
             >
               <option value="none">No Priority</option>
               <option value="priority">Priority</option>
@@ -397,7 +371,7 @@ function App() {
                 setShowNewTaskDueDate(true);
                 setNewTaskDueDate(new Date().toISOString().split("T")[0]);
               }}
-              disabled={selectedSpaceId === "ALL" || selectedSpaceId === "DELETED"}
+              disabled={selectedSpaceId === "ALL"}
             >
               Set due date
             </button>
@@ -420,13 +394,33 @@ function App() {
             </>
           )}
 
-          <button type="submit" disabled={selectedSpaceId === "ALL" || selectedSpaceId === "DELETED"}>
+          <button type="submit" disabled={selectedSpaceId === "ALL"}>
             Add
           </button>
         </form>
       )}
 
-      {/* Task list */}
+      {/* Sort & Bulk Edit, now below new-task-form */}
+      <div className="sort-row">
+        <label htmlFor="sortBy">Sort By:</label>
+        <select
+          id="sortBy"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="dueDate">Due Date</option>
+          <option value="priority">Priority</option>
+          <option value="createdAt">Date Created</option>
+        </select>
+      </div>
+
+      <div className="bulk-edit-row">
+        <button onClick={toggleBulkEdit}>
+          {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
+        </button>
+      </div>
+
+      {/* Tasks */}
       <div className="tasks-container">
         {groupedTasks.map((group) => (
           <div key={group.dateLabel || "no-date"} className="date-group">
@@ -439,93 +433,94 @@ function App() {
                 if (task.priority === "high") priorityClass = "priority-high";
                 if (task.priority === "priority") priorityClass = "priority-normal";
 
-                const isExpanded = expandedTasks[task._id] || bulkEdit;
+                const isExpanded = bulkEdit || expandedTasks[task._id] || false;
 
                 return (
                   <li
                     key={task._id}
                     className={`tasks-list-item ${priorityClass}`}
-                    // ARIA label for screen readers: read the task text, priority, completion
-                    aria-label={`Task: ${task.text}, Priority: ${task.priority !== "none" ? task.priority : "none"}, ${task.completed ? "Completed" : "Not completed"}`}
-                    tabIndex={0}
+                    aria-label={`Task: ${task.text}, Priority: ${task.priority}, ${task.completed ? "Completed" : "Not completed"}`}
+                    tabIndex={-1}
                   >
-                    {/* Optional dropdown arrow to expand/collapse */}
-                    {!bulkEdit && (
+                    {/* Collapsed view: just the task title and an arrow */}
+                    <div className="task-collapsed">
                       <button
                         type="button"
-                        className="task-toggle"
-                        aria-label="Open task options"
+                        className="task-title-button"
                         onClick={() => toggleExpandTask(task._id)}
+                        aria-expanded={isExpanded}
                       >
-                        {isExpanded ? "▾" : "▸"}
+                        {task.text}
                       </button>
-                    )}
-
-                    {/* Checkbox first for screen reader focus */}
-                    <input
-                      type="checkbox"
-                      className="task-checkbox"
-                      checked={task.completed}
-                      onChange={() => {
-                        toggleCompleteTask(task._id);
-                        // After completing, focus moves to next item automatically
-                      }}
-                      aria-label={`Mark ${task.text} as complete`}
-                    />
-
-                    <div className="task-info">
-                      <span className="task-text">{task.text}</span>
-                      <span className="task-created">
-                        Created: {formatDate(task.createdAt)}
-                      </span>
-                      {task.dueDate && (
-                        <span className="task-due-date">
-                          Due: {formatDate(task.dueDate)}
-                        </span>
-                      )}
                     </div>
 
-                    {/* If in deleted space, show "undelete" instead of normal actions */}
-                    {selectedSpaceId === "DELETED" ? (
-                      <div className="task-actions">
-                        <button className="undelete-btn" onClick={() => undeleteTask(task._id)}>
-                          Undelete
-                        </button>
+                    {/* Expanded details */}
+                    {isExpanded && (
+                      <div className="task-expanded">
+                        {/* If in deleted space, show "Undelete" instead of "Mark complete" */}
+                        {selectedSpaceId === "DELETED" ? (
+                          <div className="task-actions">
+                            <button
+                              className="undelete-btn"
+                              onClick={() => undeleteTask(task._id)}
+                            >
+                              Undelete
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="task-actions">
+                            <button onClick={() => markComplete(task)}>
+                              {task.completed ? "Mark Incomplete" : "Mark Complete"}
+                            </button>
+
+                            {editingTaskId === task._id ? (
+                              <div className="edit-task-form">
+                                <input
+                                  type="date"
+                                  value={editDueDate}
+                                  onChange={(e) => setEditDueDate(e.target.value)}
+                                  aria-label="Set due date"
+                                />
+                                <select
+                                  value={editPriority}
+                                  onChange={(e) => setEditPriority(e.target.value)}
+                                  aria-label="Set priority"
+                                >
+                                  <option value="none">No Priority</option>
+                                  <option value="priority">Priority</option>
+                                  <option value="high">High Priority</option>
+                                </select>
+                                <button onClick={() => saveTaskEdits(task)}>
+                                  Save
+                                </button>
+                                <button onClick={cancelEditingTask}>Cancel</button>
+                              </div>
+                            ) : (
+                              <>
+                                <button onClick={() => startEditingTask(task)}>
+                                  Edit Task
+                                </button>
+                                <button
+                                  className="delete-btn"
+                                  onClick={() => deleteTask(task._id)}
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* After the edit button, show created date and due date (unless sorted by due date) */}
+                        {editingTaskId !== task._id && (
+                          <>
+                            <div>Created: {formatDate(task.createdAt)}</div>
+                            {sortBy !== "dueDate" && task.dueDate && (
+                              <div>Due: {formatDate(task.dueDate)}</div>
+                            )}
+                          </>
+                        )}
                       </div>
-                    ) : (
-                      isExpanded && (
-                        <div className="task-actions">
-                          {/* If this task is in edit mode */}
-                          {editingTaskId === task._id ? (
-                            <div className="edit-task-form">
-                              <input
-                                type="date"
-                                value={editDueDate}
-                                onChange={(e) => setEditDueDate(e.target.value)}
-                                aria-label="Set due date"
-                              />
-                              <select
-                                value={editPriority}
-                                onChange={(e) => setEditPriority(e.target.value)}
-                                aria-label="Set priority"
-                              >
-                                <option value="none">No Priority</option>
-                                <option value="priority">Priority</option>
-                                <option value="high">High Priority</option>
-                              </select>
-                              <button onClick={() => saveTaskEdits(task)}>Save</button>
-                              <button onClick={cancelEditingTask}>Cancel</button>
-                            </div>
-                          ) : (
-                            <>
-                              <button onClick={() => startEditingTask(task)}>Edit</button>
-                              <button className="delete-btn" onClick={() => deleteTask(task._id)}>
-                                Delete
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )
                     )}
                   </li>
                 );
