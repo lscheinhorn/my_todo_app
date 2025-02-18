@@ -122,7 +122,9 @@ function TasksPage() {
     axios
       .put(`${TASKS_API_URL}/${taskId}`, { ...task, ...updatedFields })
       .then(() => {
+        // collapse after save
         stopEditingTask(taskId);
+        setExpandedTasks((prev) => ({ ...prev, [taskId]: false }));
         fetchTasks();
       })
       .catch((err) => console.error(err));
@@ -224,9 +226,9 @@ function TasksPage() {
     });
   }
 
-  function getPriorityClass(task) {
-    if (task.priority === "high") return "priority-high";
-    if (task.priority === "priority") return "priority-normal";
+  function getPriorityLabel(task) {
+    if (task.priority === "high") return "High Priority";
+    if (task.priority === "priority") return "Priority";
     return "";
   }
 
@@ -328,7 +330,13 @@ function TasksPage() {
               {group.tasks.map((task) => {
                 const isExpanded = expandedTasks[task._id] || bulkEdit;
                 const isEditing = editingTasks[task._id] || false;
-                const priorityClass = getPriorityClass(task);
+                const priorityClass =
+                  task.priority === "high"
+                    ? "priority-high"
+                    : task.priority === "priority"
+                    ? "priority-normal"
+                    : "";
+                const priorityLabel = getPriorityLabel(task);
 
                 return (
                   <li
@@ -354,7 +362,7 @@ function TasksPage() {
                       <div className="collapsed-row">
                         <div className="text-with-priority">
                           {task.text}
-                          {task.priority !== "none" && ` (Priority: ${task.priority})`}
+                          {priorityLabel && ` (${priorityLabel})`}
                         </div>
                         <button className="show-more-btn">
                           {isExpanded ? "▲" : "▼"}
@@ -362,29 +370,26 @@ function TasksPage() {
                       </div>
                     </div>
 
-                    {/* If expanded, show actions, sub-lists dropdown */}
+                    {/* If expanded, show actions, created date, etc. */}
                     {isExpanded && (
                       <div className="expanded-row">
                         {selectedSpaceId === "DELETED" ? (
                           <div className="actions-row">
-                            <button onClick={() => restoreTask(task._id)}>Restore</button>
+                            <button onClick={() => restoreTask(task._id)}>
+                              Restore
+                            </button>
                           </div>
                         ) : (
                           <>
                             {!isEditing ? (
                               <div className="actions-row">
-                                <button
-                                  className="delete-btn"
-                                  onClick={() => deleteTask(task._id)}
-                                >
-                                  Delete
-                                </button>
                                 <button onClick={() => startEditingTask(task._id)}>
                                   Edit
                                 </button>
-
-                                {/* Minimal sub-lists dropdown => opens a new page */}
                                 <SubListsDropdown taskId={task._id} />
+                                <button className="delete-btn" onClick={() => deleteTask(task._id)}>
+                                  Delete
+                                </button>
                               </div>
                             ) : (
                               <TaskEditForm
@@ -395,6 +400,18 @@ function TasksPage() {
                                 onCancel={() => stopEditingTask(task._id)}
                               />
                             )}
+
+                            {/* Created date on the right */}
+                            <div className="task-created-date">
+                              Created:{" "}
+                              {new Date(task.createdAt).toLocaleString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
                           </>
                         )}
                       </div>
