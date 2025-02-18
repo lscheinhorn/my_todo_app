@@ -10,9 +10,7 @@ html, body {
     Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
-/* Container for entire app or sub-list pages */
-.app-container,
-.sub-list-container {
+.app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -22,10 +20,9 @@ html, body {
   padding: 20px;
 }
 
-.app-container h1,
-.sub-list-container h1,
-.sub-list-container h2 {
+.app-container h1 {
   margin: 20px 0;
+  font-size: 1.8rem;
 }
 
 /* Spaces inline row */
@@ -57,9 +54,8 @@ html, body {
   margin-right: 10px;
 }
 
-/* New Task / List Form */
-.new-task-form,
-.new-item-form {
+/* New Task Form */
+.new-task-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -68,14 +64,12 @@ html, body {
   margin-bottom: 20px;
 }
 
-.new-task-form .form-row,
-.new-item-form .form-row {
+.new-task-form .form-row {
   display: flex;
   gap: 10px;
 }
 
-.new-task-form input[type="text"],
-.new-item-form input[type="text"] {
+.new-task-form input[type="text"] {
   flex: 1;
   padding: 8px;
   border-radius: 4px;
@@ -85,9 +79,7 @@ html, body {
 }
 
 .new-task-form select,
-.new-item-form select,
-.new-task-form input[type="date"],
-.new-item-form input[type="time"] {
+.new-task-form input[type="date"] {
   background-color: #2C2C2E;
   color: #fff;
   border: 1px solid #444;
@@ -95,8 +87,7 @@ html, body {
   padding: 6px;
 }
 
-.new-task-form button,
-.new-item-form button {
+.new-task-form button {
   padding: 8px 12px;
   border: 1px solid #444;
   background-color: #3A3A3C;
@@ -148,8 +139,7 @@ html, body {
   color: #61dafb;
 }
 
-.tasks-list,
-.items-list {
+.tasks-list {
   list-style-type: none;
   margin: 0;
   padding: 0;
@@ -157,7 +147,7 @@ html, body {
 
 /* Priority Borders */
 .priority-high {
-  border: 3px solid #FF2D55;
+  border: 3px solid #FF2D55; /* bright red border */
   border-left-width: 8px;
 }
 
@@ -166,24 +156,37 @@ html, body {
   border-left-width: 8px;
 }
 
-/* Task / Item List Items */
-.tasks-list-item,
-.items-list-item {
+/* Task Items */
+.tasks-list-item {
   margin-bottom: 6px;
   border-radius: 4px;
   background-color: #2C2C2E;
   position: relative;
   padding: 10px;
   outline: none;
+  display: flex;
+  align-items: center;
 }
 
-.tasks-list-item:focus-within,
-.items-list-item:focus-within {
+.tasks-list-item:focus-within {
   outline: 2px dashed #61dafb;
   outline-offset: 4px;
 }
 
-/* Collapsed View: read text & priority, then "Show More" button */
+/* Mark as complete checkbox on the left */
+.mark-complete-checkbox {
+  margin-right: 10px;
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+/* Entire row clickable to expand (except checkbox) */
+.task-main-content {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* Collapsed row: text, priority, arrow */
 .collapsed-row {
   display: flex;
   justify-content: space-between;
@@ -195,6 +198,7 @@ html, body {
   margin-right: 10px;
 }
 
+/* Show More arrow button */
 .show-more-btn {
   background: none;
   border: none;
@@ -202,7 +206,7 @@ html, body {
   cursor: pointer;
 }
 
-/* Expanded Row: "Mark Complete," "Delete," "Edit," etc. */
+/* Expanded row: displays actions, edit form, sub-lists, etc. */
 .expanded-row {
   margin-top: 8px;
   display: flex;
@@ -210,6 +214,7 @@ html, body {
   gap: 8px;
 }
 
+/* Action buttons row */
 .actions-row {
   display: flex;
   flex-wrap: wrap;
@@ -236,7 +241,7 @@ html, body {
   border: none;
 }
 
-/* Edit Form for tasks/items: text, priority, due date/time */
+/* Edit form */
 .edit-form {
   display: flex;
   flex-direction: column;
@@ -259,31 +264,54 @@ html, body {
   padding: 6px;
 }
 
-/* Sub-lists row: just like spaces row for a single task */
-.sub-lists-inline {
+/* Sub-lists dropdown row */
+.sub-lists-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-top: 10px;
 }
 
-.sub-list-item {
-  background-color: #2C2C2E;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.sub-list-item.selected {
-  border: 1px solid #61dafb;
-}
-
-.add-sublist-input {
-  padding: 6px;
-  border: 1px solid #333;
-  border-radius: 4px;
+.sub-lists-row select {
   background-color: #2C2C2E;
   color: #fff;
-  margin-right: 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
 }
+
+/* Sub-list items also have priority highlighting */
+.items-list {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+.items-list-item {
+  margin-bottom: 6px;
+  border-radius: 4px;
+  background-color: #2C2C2E;
+  padding: 10px;
+  outline: none;
+  display: flex;
+  align-items: center;
+}
+
+.items-list-item:focus-within {
+  outline: 2px dashed #61dafb;
+  outline-offset: 4px;
+}
+
+.mark-complete-item-checkbox {
+  margin-right: 10px;
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+.item-main-content {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* etc. */

@@ -5,10 +5,6 @@ import axios from "axios";
 
 const SPACES_API_URL = "https://my-todo-app-mujx.onrender.com/spaces";
 
-/**
- * Inline row of spaces:
- * [All tasks] [Space1] [Space2] ... [Deleted tasks] [Add]
- */
 function Spaces({ onSpaceSelect, selectedSpaceId }) {
   const [spaces, setSpaces] = useState([]);
   const [showAddInput, setShowAddInput] = useState(false);
@@ -25,7 +21,8 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
       .catch((err) => console.error("Error fetching spaces:", err));
   }
 
-  function handleAddSpace() {
+  function handleAddSpace(e) {
+    e.preventDefault();
     if (!newSpaceName.trim()) {
       setShowAddInput(false);
       return;
@@ -41,7 +38,7 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
   }
 
   function handleDeleteSpace(spaceId, e) {
-    e.stopPropagation(); // Prevent selecting the space
+    e.stopPropagation();
     axios
       .delete(`${SPACES_API_URL}/${spaceId}`)
       .then(() => fetchSpaces())
@@ -50,7 +47,6 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
 
   return (
     <div className="spaces-inline">
-      {/* All tasks */}
       <div
         className={`space-item ${selectedSpaceId === "ALL" ? "selected" : ""}`}
         onClick={() => onSpaceSelect("ALL")}
@@ -58,11 +54,12 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
         All tasks
       </div>
 
-      {/* Actual spaces */}
       {spaces.map((space) => (
         <div
           key={space._id}
-          className={`space-item ${space._id === selectedSpaceId ? "selected" : ""}`}
+          className={`space-item ${
+            space._id === selectedSpaceId ? "selected" : ""
+          }`}
           onClick={() => onSpaceSelect(space._id)}
         >
           {space.name}
@@ -75,25 +72,25 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
         </div>
       ))}
 
-      {/* Deleted tasks */}
       <div
-        className={`space-item ${selectedSpaceId === "DELETED" ? "selected" : ""}`}
+        className={`space-item ${
+          selectedSpaceId === "DELETED" ? "selected" : ""
+        }`}
         onClick={() => onSpaceSelect("DELETED")}
       >
         Deleted tasks
       </div>
 
-      {/* Add button or inline input */}
       {showAddInput ? (
-        <>
+        <form onSubmit={handleAddSpace} style={{ display: "inline-flex", gap: "6px" }}>
           <input
             className="add-space-input"
+            placeholder="Space name..."
             value={newSpaceName}
             onChange={(e) => setNewSpaceName(e.target.value)}
-            placeholder="Space name..."
           />
-          <button onClick={handleAddSpace}>OK</button>
-        </>
+          <button type="submit">OK</button>
+        </form>
       ) : (
         <button onClick={() => setShowAddInput(true)}>Add</button>
       )}

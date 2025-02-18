@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import "./App.css";
 import Spaces from "./Spaces";
 import SubListsDropdown from "./SubListsDropdown";
@@ -10,19 +9,17 @@ import SubListsDropdown from "./SubListsDropdown";
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 
 function TasksPage() {
-  const navigate = useNavigate();
-
-  // Which space is selected
+  // Space selection
   const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");
-  // Tasks from the backend
+  // Tasks
   const [tasks, setTasks] = useState([]);
   // Sorting
   const [sortBy, setSortBy] = useState("dueDate");
   // Bulk Edit
   const [bulkEdit, setBulkEdit] = useState(false);
-  // Which tasks are expanded
+  // Expanded tasks
   const [expandedTasks, setExpandedTasks] = useState({});
-  // Which tasks are in edit mode
+  // Editing tasks
   const [editingTasks, setEditingTasks] = useState({});
 
   // New Task form
@@ -56,7 +53,6 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
-  // Add a new task
   function addTask(e) {
     e.preventDefault();
     if (!newTaskText.trim()) return;
@@ -86,7 +82,6 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
-  // Mark complete / incomplete
   function markComplete(task) {
     axios
       .put(`${TASKS_API_URL}/${task._id}`, {
@@ -97,7 +92,6 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
-  // Soft-delete
   function deleteTask(taskId) {
     axios
       .delete(`${TASKS_API_URL}/${taskId}`)
@@ -105,7 +99,6 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
-  // Restore
   function restoreTask(taskId) {
     axios
       .put(`${TASKS_API_URL}/${taskId}/restore`)
@@ -113,7 +106,6 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
-  // Edit toggling
   function toggleExpandTask(taskId) {
     setExpandedTasks((prev) => ({
       ...prev,
@@ -122,29 +114,18 @@ function TasksPage() {
   }
 
   function startEditingTask(taskId) {
-    setEditingTasks((prev) => ({
-      ...prev,
-      [taskId]: true,
-    }));
+    setEditingTasks((prev) => ({ ...prev, [taskId]: true }));
   }
 
   function stopEditingTask(taskId) {
-    setEditingTasks((prev) => ({
-      ...prev,
-      [taskId]: false,
-    }));
+    setEditingTasks((prev) => ({ ...prev, [taskId]: false }));
   }
 
-  // Save changes to a task
   function saveTaskEdits(taskId, updatedFields) {
     const task = tasks.find((t) => t._id === taskId);
     if (!task) return;
-
     axios
-      .put(`${TASKS_API_URL}/${taskId}`, {
-        ...task,
-        ...updatedFields,
-      })
+      .put(`${TASKS_API_URL}/${taskId}`, { ...task, ...updatedFields })
       .then(() => {
         stopEditingTask(taskId);
         fetchTasks();
@@ -152,7 +133,6 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
-  // Bulk edit toggles
   function toggleBulkEdit() {
     const nextValue = !bulkEdit;
     setBulkEdit(nextValue);
@@ -167,7 +147,6 @@ function TasksPage() {
     }
   }
 
-  // Sorting
   function getSortedTasks() {
     const sorted = [...tasks];
     sorted.sort((a, b) => {
@@ -250,14 +229,14 @@ function TasksPage() {
     });
   }
 
-  const sortedTasks = getSortedTasks();
-  const groupedTasks = groupTasksByDueDate(sortedTasks);
-
   function getPriorityClass(task) {
     if (task.priority === "high") return "priority-high";
     if (task.priority === "priority") return "priority-normal";
     return "";
   }
+
+  const sortedTasks = getSortedTasks();
+  const groupedTasks = groupTasksByDueDate(sortedTasks);
 
   return (
     <div className="app-container">
@@ -268,7 +247,6 @@ function TasksPage() {
         onSpaceSelect={(id) => setSelectedSpaceId(id)}
       />
 
-      {/* New Task Form */}
       {selectedSpaceId !== "DELETED" && (
         <form className="new-task-form" onSubmit={addTask}>
           <div className="form-row">
@@ -326,7 +304,6 @@ function TasksPage() {
         </form>
       )}
 
-      {/* Sort & Bulk Edit */}
       <div className="sort-row">
         <label htmlFor="sortBy">Sort By:</label>
         <select
@@ -346,7 +323,6 @@ function TasksPage() {
         </button>
       </div>
 
-      {/* Render tasks */}
       <div className="tasks-container">
         {groupedTasks.map((group) => (
           <div key={group.dateLabel || "no-date"} className="date-group">
@@ -355,14 +331,9 @@ function TasksPage() {
             )}
             <ul className="tasks-list">
               {group.tasks.map((task) => {
-                const isExpanded = bulkEdit || expandedTasks[task._id] || false;
-                const priorityClass = getPriorityClass(task);
+                const isExpanded = expandedTasks[task._id] || bulkEdit;
                 const isEditing = editingTasks[task._id] || false;
-
-                // For screen readers, we read the text + priority
-                const readText = `${task.text}${
-                  task.priority !== "none" ? `, Priority: ${task.priority}` : ""
-                }`;
+                const priorityClass = getPriorityClass(task);
 
                 return (
                   <li
@@ -370,53 +341,55 @@ function TasksPage() {
                     className={`tasks-list-item ${priorityClass}`}
                     tabIndex={-1}
                   >
-                    {/* Collapsed row */}
-                    <div className="collapsed-row">
-                      <div className="text-with-priority" aria-label={readText}>
-                        {readText}
+                    {/* Mark complete on the left */}
+                    <input
+                      type="checkbox"
+                      className="mark-complete-checkbox"
+                      checked={task.completed}
+                      onChange={() => markComplete(task)}
+                      aria-label={`Mark ${task.text} as complete`}
+                    />
+
+                    {/* The main content is clickable to expand */}
+                    <div
+                      className="task-main-content"
+                      onClick={() => toggleExpandTask(task._id)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="collapsed-row">
+                        <div className="text-with-priority">
+                          {task.text}
+                          {task.priority !== "none" && ` (Priority: ${task.priority})`}
+                        </div>
+                        <button className="show-more-btn">
+                          {isExpanded ? "▲" : "▼"}
+                        </button>
                       </div>
-                      <button
-                        className="show-more-btn"
-                        onClick={() => toggleExpandTask(task._id)}
-                        aria-expanded={isExpanded}
-                      >
-                        {isExpanded ? "Hide" : "Show More"}
-                      </button>
                     </div>
 
+                    {/* If expanded, show actions and sub-lists */}
                     {isExpanded && (
-                      <div className="expanded-row">
-                        {/* If DELETED, only restore */}
+                      <div className="expanded-row" style={{ width: "100%" }}>
                         {selectedSpaceId === "DELETED" ? (
                           <div className="actions-row">
-                            <button onClick={() => restoreTask(task._id)}>
-                              Restore
-                            </button>
+                            <button onClick={() => restoreTask(task._id)}>Restore</button>
                           </div>
                         ) : (
                           <>
-                            {/* Mark complete, delete, edit, sub-lists */}
-                            <div className="actions-row">
-                              <button onClick={() => markComplete(task)}>
-                                {task.completed
-                                  ? "Mark Incomplete"
-                                  : "Mark Complete"}
-                              </button>
-                              <button
-                                className="delete-btn"
-                                onClick={() => deleteTask(task._id)}
-                              >
-                                Delete
-                              </button>
-                              <button onClick={() => startEditingTask(task._id)}>
-                                Edit
-                              </button>
+                            {!isEditing ? (
+                              <div className="actions-row">
+                                <button
+                                  className="delete-btn"
+                                  onClick={() => deleteTask(task._id)}
+                                >
+                                  Delete
+                                </button>
+                                <button onClick={() => startEditingTask(task._id)}>Edit</button>
 
-                              {/* Sub-lists dropdown => navigates to /sublist/:taskId */}
-                              <SubListsDropdown taskId={task._id} />
-                            </div>
-
-                            {isEditing && (
+                                {/* Sub-lists dropdown inline */}
+                                <SubListsDropdown taskId={task._id} />
+                              </div>
+                            ) : (
                               <TaskEditForm
                                 task={task}
                                 onSave={(updatedFields) =>
@@ -441,7 +414,7 @@ function TasksPage() {
 }
 
 /**
- * TaskEditForm: inline edit for text, priority, due date
+ * Inline edit form for a task: text, priority, due date
  */
 function TaskEditForm({ task, onSave, onCancel }) {
   const [editText, setEditText] = useState(task.text);
