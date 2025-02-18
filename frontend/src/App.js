@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+import './App.css'
 import axios from "axios";
+import Spaces from "./Spaces";
 
 const API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 
@@ -67,6 +69,10 @@ function App() {
         Toggle Dark Mode
       </button>
       <h2>My To-Do List</h2>
+
+      {/* Render the Spaces component here */}
+      <Spaces onSelectSpace={(spaceId) => setSelectedSpaceId(spaceId)} />
+      
       <input
         type="text"
         value={newTask}

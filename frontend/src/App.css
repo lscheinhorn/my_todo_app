@@ -41,6 +41,7 @@
 }
 
 .dark-mode {
+  min-height: 100vh; /* So the background covers the full screen */
   background-color: #121212;
   color: #ffffff;
 }
