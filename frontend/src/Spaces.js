@@ -18,7 +18,10 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
   function fetchSpaces() {
     axios
       .get(SPACES_API_URL)
-      .then((res) => setSpaces(res.data))
+      .then((res) => {
+        console.log("Fetched spaces:", res.data); // debug
+        setSpaces(res.data);
+      })
       .catch((err) => console.error("Error fetching spaces:", err));
   }
 

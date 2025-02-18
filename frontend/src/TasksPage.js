@@ -6,7 +6,7 @@ import "./App.css";
 import Spaces from "./Spaces";
 import SubListsDropdown from "./SubListsDropdown";
 
-const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
+const TASKS_API_URL = "https://my-todo-app-frontend-catn.onrender.com/tasks";
 
 function TasksPage() {
   const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");
@@ -102,10 +102,25 @@ function TasksPage() {
   }
 
   function toggleExpandTask(taskId) {
-    setExpandedTasks((prev) => ({
-      ...prev,
-      [taskId]: !prev[taskId],
-    }));
+    // If not in bulk edit, auto-collapse other tasks
+    if (!bulkEdit) {
+      setExpandedTasks((prev) => {
+        const isCurrentlyExpanded = !!prev[taskId];
+        // collapse all
+        const newState = {};
+        // if it was not expanded, expand it
+        if (!isCurrentlyExpanded) {
+          newState[taskId] = true;
+        }
+        return newState;
+      });
+    } else {
+      // bulk edit => multiple expansions
+      setExpandedTasks((prev) => ({
+        ...prev,
+        [taskId]: !prev[taskId],
+      }));
+    }
   }
 
   function startEditingTask(taskId) {
@@ -134,12 +149,14 @@ function TasksPage() {
     const nextValue = !bulkEdit;
     setBulkEdit(nextValue);
     if (nextValue) {
+      // expand all
       const expandMap = {};
       tasks.forEach((task) => {
         expandMap[task._id] = true;
       });
       setExpandedTasks(expandMap);
     } else {
+      // collapse all
       setExpandedTasks({});
     }
   }
@@ -302,23 +319,26 @@ function TasksPage() {
         </form>
       )}
 
-      <div className="sort-row">
-        <label htmlFor="sortBy">Sort By:</label>
-        <select
-          id="sortBy"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          <option value="dueDate">Due Date</option>
-          <option value="priority">Priority</option>
-          <option value="createdAt">Date Created</option>
-        </select>
-      </div>
+      {/* Put Sort & Bulk Edit in one line */}
+      <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
+        <div className="sort-row">
+          <label htmlFor="sortBy">Sort By:</label>
+          <select
+            id="sortBy"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="dueDate">Due Date</option>
+            <option value="priority">Priority</option>
+            <option value="createdAt">Date Created</option>
+          </select>
+        </div>
 
-      <div className="bulk-edit-row">
-        <button onClick={toggleBulkEdit}>
-          {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
-        </button>
+        <div className="bulk-edit-row">
+          <button onClick={toggleBulkEdit}>
+            {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
+          </button>
+        </div>
       </div>
 
       <div className="tasks-container">
@@ -343,29 +363,29 @@ function TasksPage() {
                     className={`tasks-list-item ${priorityClass}`}
                     tabIndex={-1}
                   >
-                    {/* Custom check inline with the title */}
-                    <input
-                      type="checkbox"
-                      className="mark-complete-checkbox"
-                      checked={task.completed}
-                      onChange={() => markComplete(task)}
-                      aria-label={`Mark ${task.text} as complete`}
-                    />
-
-                    {/* Title row is clickable to expand */}
-                    <div
-                      className="task-main-content"
-                      onClick={() => toggleExpandTask(task._id)}
-                      aria-expanded={isExpanded}
-                    >
-                      <div className="collapsed-row">
-                        <div className="text-with-priority">
-                          {task.text}
-                          {priorityLabel && ` (${priorityLabel})`}
+                    {/* Inline checkbox with the title */}
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        className="mark-complete-checkbox"
+                        checked={task.completed}
+                        onChange={() => markComplete(task)}
+                        aria-label={`Mark ${task.text} as complete`}
+                      />
+                      <div
+                        className="task-main-content"
+                        onClick={() => toggleExpandTask(task._id)}
+                        aria-expanded={isExpanded}
+                      >
+                        <div className="collapsed-row">
+                          <div className="text-with-priority">
+                            {task.text}
+                            {priorityLabel && ` (${priorityLabel})`}
+                          </div>
+                          <button className="show-more-btn">
+                            {isExpanded ? "▲" : "▼"}
+                          </button>
                         </div>
-                        <button className="show-more-btn">
-                          {isExpanded ? "▲" : "▼"}
-                        </button>
                       </div>
                     </div>
 
@@ -379,30 +399,21 @@ function TasksPage() {
                             </button>
                           </div>
                         ) : !isEditing ? (
-                          <div className="actions-row">
-                            {/* Delete icon on far right */}
-                            <button
-                              className="delete-btn"
-                              onClick={() => deleteTask(task._id)}
-                              aria-label="Delete Task"
-                              style={{ marginLeft: "auto" }}
-                            >
-                              🗑
-                            </button>
-
+                          <div
+                            className="actions-row"
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                            }}
+                          >
                             <button onClick={() => startEditingTask(task._id)}>
                               Edit
                             </button>
 
                             <SubListsDropdown taskId={task._id} />
 
-                            {/* Created date on the far right if needed, 
-                                but we already placed the delete on far right. 
-                                Let's keep the date just before the delete or after, your choice. */}
-                            <div
-                              className="task-created-date"
-                              style={{ marginLeft: "auto", order: -1 }}
-                            >
+                            <div className="task-created-date">
                               Created:{" "}
                               {new Date(task.createdAt).toLocaleString(undefined, {
                                 year: "numeric",
@@ -412,6 +423,16 @@ function TasksPage() {
                                 minute: "2-digit",
                               })}
                             </div>
+
+                            {/* Trash can on far right */}
+                            <button
+                              className="delete-btn"
+                              onClick={() => deleteTask(task._id)}
+                              aria-label="Delete Task"
+                              style={{ marginLeft: "auto" }}
+                            >
+                              🗑
+                            </button>
                           </div>
                         ) : (
                           <>

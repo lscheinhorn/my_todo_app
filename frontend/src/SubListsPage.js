@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import "./App.css";
 import axios from "axios";
 
-const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
+const TASKS_API_URL = "https://my-todo-app-frontend-catn.onrender.com/tasks";
 const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
 function SubListsPage() {
@@ -13,8 +13,7 @@ function SubListsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // For the top title
-  const [taskName, setTaskName] = useState(null); // null => not loaded
+  const [taskName, setTaskName] = useState(null);
   const [taskError, setTaskError] = useState(false);
 
   const [subLists, setSubLists] = useState([]);
@@ -24,8 +23,8 @@ function SubListsPage() {
 
   const [selectedSubListId, setSelectedSubListId] = useState(null);
 
-  // Items for the selected sub-list
-  const [groupedItems, setGroupedItems] = useState([]); // array of {timeLabel, items:[]}
+  // groupedItems => array of {timeLabel, items:[]}
+  const [groupedItems, setGroupedItems] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
   const [editingItems, setEditingItems] = useState({});
 
@@ -96,7 +95,7 @@ function SubListsPage() {
       groups[timeKey].push(item);
     });
 
-    // sort times ascending
+    // sort time ascending
     const sortedKeys = Object.keys(groups).sort((a, b) => {
       if (a === "No Due Time") return 1;
       if (b === "No Due Time") return -1;
@@ -116,7 +115,6 @@ function SubListsPage() {
       const arr = groups[key].slice().sort((a, b) => {
         if (a.completed && !b.completed) return 1;
         if (!a.completed && b.completed) return -1;
-        // then by created date
         return new Date(a.createdAt) - new Date(b.createdAt);
       });
       return { timeLabel: key, items: arr };
@@ -149,7 +147,6 @@ function SubListsPage() {
     setSearchParams({ mode: "add" });
   }
 
-  // Toggle editing mode for sub-lists
   function toggleEditingLists() {
     setEditingLists(!editingLists);
   }
@@ -160,7 +157,7 @@ function SubListsPage() {
       .delete(`${SUBLISTS_API_URL}/${subListId}`)
       .then(() => {
         fetchSubLists();
-        // if the deleted sublist was selected, unselect it
+        // if we deleted the selected sub-list, unselect it
         if (subListId === selectedSubListId) {
           setSearchParams({});
         }
@@ -258,7 +255,6 @@ function SubListsPage() {
         <h1>Task: {taskName}</h1>
       )}
 
-      {/* Row of sub-lists, with "Edit Lists" toggle */}
       <div
         className={`sub-lists-row ${editingLists ? "editing-lists" : ""}`}
         style={{ flexWrap: "wrap" }}
@@ -322,10 +318,9 @@ function SubListsPage() {
 }
 
 /**
- * SubListItems: 
- * We have an array of groups like [{timeLabel: "...", items: [...]}].
- * Each group is labeled, and items are displayed with custom checkboxes, 
- * show more, edit, delete, created date, etc.
+ * SubListItems
+ * - groupedItems => array of { timeLabel: "No Due Time" or "Due by 03:30", items: [...] }
+ * - We show a heading for each group, and items with a custom checkbox, expand, edit, etc.
  */
 function SubListItems({
   groupedItems,
@@ -413,7 +408,6 @@ function SubListItems({
         <button type="submit">Add</button>
       </form>
 
-      {/* groupedItems => array of {timeLabel, items:[]} */}
       {groupedItems.map((group) => (
         <div key={group.timeLabel} style={{ marginBottom: "20px" }}>
           <h3 className="time-group-label">{group.timeLabel}</h3>
@@ -432,52 +426,48 @@ function SubListItems({
                   className={`tasks-list-item ${priorityClass}`}
                   tabIndex={-1}
                 >
-                  {/* Custom check for item completion */}
-                  <input
-                    type="checkbox"
-                    className="mark-complete-checkbox"
-                    checked={item.completed}
-                    onChange={() => onToggleComplete(item)}
-                    aria-label={`Mark ${item.text} as complete`}
-                  />
-
-                  {/* Title row clickable to expand */}
-                  <div
-                    className="task-main-content"
-                    onClick={() => onToggleExpand(item._id)}
-                    aria-expanded={isExpanded}
-                  >
-                    <div className="collapsed-row">
-                      <div className="text-with-priority">
-                        {item.text}
-                        {priorityLabel && ` (${priorityLabel})`}
+                  {/* Inline checkbox with the title */}
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      className="mark-complete-checkbox"
+                      checked={item.completed}
+                      onChange={() => onToggleComplete(item)}
+                      aria-label={`Mark ${item.text} as complete`}
+                    />
+                    <div
+                      className="task-main-content"
+                      onClick={() => onToggleExpand(item._id)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="collapsed-row">
+                        <div className="text-with-priority">
+                          {item.text}
+                          {priorityLabel && ` (${priorityLabel})`}
+                        </div>
+                        <button className="show-more-btn">
+                          {isExpanded ? "▲" : "▼"}
+                        </button>
                       </div>
-                      <button className="show-more-btn">
-                        {isExpanded ? "▲" : "▼"}
-                      </button>
                     </div>
                   </div>
 
                   {isExpanded && (
                     <div className="expanded-row">
                       {!isEditing ? (
-                        <div className="actions-row">
-                          {/* Trash can on far right */}
-                          <button
-                            className="delete-btn"
-                            onClick={() => onDeleteItem(item._id)}
-                            aria-label="Delete Item"
-                            style={{ marginLeft: "auto" }}
-                          >
-                            🗑
+                        <div
+                          className="actions-row"
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                          }}
+                        >
+                          <button onClick={() => onStartEdit(item._id)}>
+                            Edit
                           </button>
 
-                          <button onClick={() => onStartEdit(item._id)}>Edit</button>
-
-                          <div
-                            className="task-created-date"
-                            style={{ marginLeft: "auto", order: -1 }}
-                          >
+                          <div className="task-created-date">
                             Created:{" "}
                             {new Date(item.createdAt).toLocaleString(undefined, {
                               year: "numeric",
@@ -487,6 +477,16 @@ function SubListItems({
                               minute: "2-digit",
                             })}
                           </div>
+
+                          {/* Trash can on far right */}
+                          <button
+                            className="delete-btn"
+                            onClick={() => onDeleteItem(item._id)}
+                            aria-label="Delete Item"
+                            style={{ marginLeft: "auto" }}
+                          >
+                            🗑
+                          </button>
                         </div>
                       ) : (
                         <>

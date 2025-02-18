@@ -8,7 +8,7 @@ const app = express();
 
 // Configure CORS
 const corsOptions = {
-  origin: "https://my-todo-app-frontend-catn.onrender.com", // or your actual frontend
+  origin: "https://my-todo-app-frontend-catn.onrender.com", // your actual frontend
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   optionsSuccessStatus: 204
@@ -22,37 +22,32 @@ app.use((req, res, next) => {
   next();
 });
 
-// Connect to MongoDB
+// Connect to Mongo
 const mongoURI = process.env.MONGO_URI;
 mongoose
   .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Task Schema
+// Task schema
 const taskSchema = new mongoose.Schema({
   text: String,
   completed: Boolean,
-  spaceId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Space",
-    required: false,
-  },
+  spaceId: { type: mongoose.Schema.Types.ObjectId, ref: "Space" },
   createdAt: { type: Date, default: Date.now },
   dueDate: { type: Date, default: null },
   priority: { type: String, enum: ["none", "priority", "high"], default: "none" },
   deletedAt: { type: Date, default: null },
 });
-
 const Task = mongoose.model("Task", taskSchema);
 
-// Space Schema
+// Space schema
 const spaceSchema = new mongoose.Schema({
   name: { type: String, required: true },
 });
 const Space = mongoose.model("Space", spaceSchema);
 
-// Sub-list schemas: each item can have text, completed, priority, and dueTime
+// Sub-list schema
 const subListItemSchema = new mongoose.Schema({
   text: String,
   completed: Boolean,
@@ -62,17 +57,15 @@ const subListItemSchema = new mongoose.Schema({
 });
 
 const subListSchema = new mongoose.Schema({
-  taskId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Task",
-    required: true,
-  },
+  taskId: { type: mongoose.Schema.Types.ObjectId, ref: "Task", required: true },
   name: { type: String, default: "New List" },
   items: [subListItemSchema],
 });
-
 const SubList = mongoose.model("SubList", subListSchema);
 
+
+
+// Routes for tasks, spaces, sub-lists, etc. omitted for brevity
 // Routes
 app.get("/", (req, res) => {
   res.send("Welcome to the My To-Do App API!");

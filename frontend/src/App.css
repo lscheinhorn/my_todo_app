@@ -31,6 +31,7 @@ html, body {
   align-items: center;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap; /* allow wrapping if needed */
 }
 
 .space-item, .sub-list-item {
@@ -54,12 +55,14 @@ html, body {
   margin-right: 10px;
 }
 
-/* 
-  If we are in "edit spaces" or "edit lists" mode, we show an "X" next to each item. 
-  Otherwise, we hide it. We'll do this by toggling a class in React. 
-*/
+/* "Edit Spaces" or "Edit Lists" toggles a class that shows delete buttons */
+.editing-spaces .delete-space-btn,
+.editing-lists .delete-sublist-btn {
+  display: inline;
+}
+
 .delete-space-btn, .delete-sublist-btn {
-  display: none; /* hidden by default */
+  display: none; /* hidden by default unless editing is toggled */
   margin-left: 8px;
   background: none;
   border: none;
@@ -71,18 +74,7 @@ html, body {
   color: #fff;
 }
 
-/* 
-  If we have a parent container with a class like .editing-spaces or .editing-lists, 
-  we show the X buttons. We'll do that in React by toggling a class. 
-*/
-.editing-spaces .delete-space-btn {
-  display: inline;
-}
-.editing-lists .delete-sublist-btn {
-  display: inline;
-}
-
-/* New Task Form */
+/* New Task Form or New Item Form */
 .new-task-form, .new-item-form {
   display: flex;
   flex-direction: column;
@@ -126,12 +118,12 @@ html, body {
   cursor: pointer;
 }
 
-/* Sorting & Bulk Edit Rows */
+/* Sorting & Bulk Edit Rows in one line */
 .sort-row, .bulk-edit-row {
-  margin-bottom: 20px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
+  margin-right: 20px; /* small spacing */
 }
 
 .sort-row select {
@@ -143,14 +135,13 @@ html, body {
   cursor: pointer;
 }
 
-.bulk-edit-row button {
-  padding: 6px 12px;
-  border: 1px solid #444;
-  background-color: #3A3A3C;
-  color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-}
+/* 
+  For a single line, you can wrap them in a container 
+  <div style={{ display: 'flex', gap: '20px' }}>
+    <SortRow ... />
+    <BulkEditRow ... />
+  </div>
+*/
 
 /* Tasks Container */
 .tasks-container {
@@ -200,10 +191,7 @@ html, body {
   outline-offset: 4px;
 }
 
-/* 
-  Custom checkbox for "Mark as complete"
-  We hide the default box and draw our own. 
-*/
+/* Custom check for "Mark as complete" */
 .mark-complete-checkbox {
   appearance: none;
   width: 24px;
@@ -230,11 +218,10 @@ html, body {
   left: 3px;
 }
 
-/* Collapsed row for tasks or items */
+/* Collapsed row */
 .task-main-content {
   cursor: pointer;
   margin-bottom: 6px;
-  /* We'll rely on a flex container if needed in the parent */
 }
 
 .collapsed-row {
@@ -247,7 +234,6 @@ html, body {
   margin-right: 10px;
 }
 
-/* Show More arrow button */
 .show-more-btn {
   background: none;
   border: none;
@@ -268,11 +254,11 @@ html, body {
 .actions-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
 }
 
-/* Trash can icon on far right or left, with bright red background on hover */
+/* Trash can on the far right with bright red hover background */
 .delete-btn {
   background: none;
   border: none;
@@ -287,7 +273,7 @@ html, body {
   color: #fff;
 }
 
-/* Created date on the right */
+/* Created date */
 .task-created-date {
   text-align: right;
   font-size: 0.9rem;
