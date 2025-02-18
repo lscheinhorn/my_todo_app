@@ -66,6 +66,37 @@ const spaceSchema = new mongoose.Schema({
 });
 const Space = mongoose.model("Space", spaceSchema);
 
+// ---------- NEW: SubList Schema ----------
+/*
+   A SubList is tied to a specific task (via taskId).
+   Each sub-list can have multiple items, stored as an array of subdocuments.
+*/
+const subListItemSchema = new mongoose.Schema({
+  text: String,
+  completed: Boolean,
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const subListSchema = new mongoose.Schema({
+  taskId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Task",
+    required: true,
+  },
+  name: {
+    type: String,
+    default: "My Sub-List",
+  },
+  items: [subListItemSchema],
+});
+
+const SubList = mongoose.model("SubList", subListSchema);
+
+// ---------- ROUTES ----------
+
 // Root
 app.get("/", (req, res) => {
   console.log("🌍 Root API accessed");
@@ -154,8 +185,8 @@ app.delete("/tasks/:id", async (req, res) => {
   }
 });
 
-// Undelete task
-app.put("/tasks/:id/undelete", async (req, res) => {
+// Restore a task (renamed from "undelete")
+app.put("/tasks/:id/restore", async (req, res) => {
   try {
     const task = await Task.findByIdAndUpdate(
       req.params.id,
@@ -165,8 +196,8 @@ app.put("/tasks/:id/undelete", async (req, res) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json({ message: "Task restored", task });
   } catch (err) {
-    console.error("❌ Error undeleting task:", err);
-    res.status(500).json({ message: "Error undeleting task", error: err });
+    console.error("❌ Error restoring task:", err);
+    res.status(500).json({ message: "Error restoring task", error: err });
   }
 });
 
@@ -207,6 +238,7 @@ app.put("/spaces/:id", async (req, res) => {
 app.delete("/spaces/:id", async (req, res) => {
   try {
     await Space.findByIdAndDelete(req.params.id);
+    // Soft-delete tasks in that space
     await Task.updateMany({ spaceId: req.params.id }, { deletedAt: Date.now() });
     res.json({ message: "Space and associated tasks deleted" });
   } catch (err) {
@@ -214,7 +246,122 @@ app.delete("/spaces/:id", async (req, res) => {
   }
 });
 
-// Purge tasks older than 30 days (optional, if needed)
+// ----------- SUBLIST ROUTES -----------
+/*
+   GET /sublists?taskId=xxx    -> returns all sub-lists for a specific task
+   POST /sublists             -> create a new sub-list
+   GET /sublists/:id          -> get a single sub-list by id
+   POST /sublists/:id/items   -> add an item to a sub-list
+   PUT /sublists/:id/items/:itemId -> update a sub-list item
+   DELETE /sublists/:id/items/:itemId -> remove a sub-list item
+*/
+
+// Get sub-lists for a task
+app.get("/sublists", async (req, res) => {
+  try {
+    const { taskId } = req.query;
+    if (!taskId) {
+      return res
+        .status(400)
+        .json({ message: "taskId query parameter is required" });
+    }
+    const subLists = await SubList.find({ taskId });
+    res.json(subLists);
+  } catch (err) {
+    console.error("❌ Error fetching sub-lists:", err);
+    res.status(500).json({ message: "Error fetching sub-lists", error: err });
+  }
+});
+
+// Create a new sub-list
+app.post("/sublists", async (req, res) => {
+  try {
+    const { taskId, name } = req.body;
+    if (!taskId) {
+      return res
+        .status(400)
+        .json({ message: "taskId is required to create a sub-list" });
+    }
+    const subList = new SubList({ taskId, name });
+    await subList.save();
+    res.status(201).json(subList);
+  } catch (err) {
+    console.error("❌ Error creating sub-list:", err);
+    res.status(500).json({ message: "Error creating sub-list", error: err });
+  }
+});
+
+// Get a single sub-list by ID
+app.get("/sublists/:id", async (req, res) => {
+  try {
+    const subList = await SubList.findById(req.params.id);
+    if (!subList) return res.status(404).json({ message: "Sub-list not found" });
+    res.json(subList);
+  } catch (err) {
+    console.error("❌ Error fetching sub-list:", err);
+    res.status(500).json({ message: "Error fetching sub-list", error: err });
+  }
+});
+
+// Add an item to a sub-list
+app.post("/sublists/:id/items", async (req, res) => {
+  try {
+    const subList = await SubList.findById(req.params.id);
+    if (!subList) return res.status(404).json({ message: "Sub-list not found" });
+
+    const newItem = {
+      text: req.body.text || "Untitled",
+      completed: false,
+    };
+    subList.items.push(newItem);
+    await subList.save();
+    res.status(201).json(subList);
+  } catch (err) {
+    console.error("❌ Error adding sub-list item:", err);
+    res.status(500).json({ message: "Error adding sub-list item", error: err });
+  }
+});
+
+// Update a sub-list item
+app.put("/sublists/:id/items/:itemId", async (req, res) => {
+  try {
+    const subList = await SubList.findById(req.params.id);
+    if (!subList) return res.status(404).json({ message: "Sub-list not found" });
+
+    const item = subList.items.id(req.params.itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+
+    item.text = req.body.text ?? item.text;
+    if (typeof req.body.completed === "boolean") {
+      item.completed = req.body.completed;
+    }
+    await subList.save();
+    res.json(subList);
+  } catch (err) {
+    console.error("❌ Error updating sub-list item:", err);
+    res.status(500).json({ message: "Error updating sub-list item", error: err });
+  }
+});
+
+// Delete a sub-list item
+app.delete("/sublists/:id/items/:itemId", async (req, res) => {
+  try {
+    const subList = await SubList.findById(req.params.id);
+    if (!subList) return res.status(404).json({ message: "Sub-list not found" });
+
+    const item = subList.items.id(req.params.itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+
+    item.remove();
+    await subList.save();
+    res.json(subList);
+  } catch (err) {
+    console.error("❌ Error deleting sub-list item:", err);
+    res.status(500).json({ message: "Error deleting sub-list item", error: err });
+  }
+});
+
+// Example: Purge tasks older than 30 days (optional)
 app.delete("/tasks/purge-old", async (req, res) => {
   try {
     const thirtyDaysAgo = new Date();
