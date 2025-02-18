@@ -1,96 +1,125 @@
 // SubListsPage.js
 
 import React, { useState, useEffect } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
 import "./App.css";
 
+const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
 /**
  * SubListsPage:
- * A page to manage all sub-lists of a single task (identified by taskId).
- * We show a row of sub-lists at the top, letting the user pick which one is active,
- * plus an "Add" form for new sub-lists. Then we display items of the selected sub-list
- * in a tasks-like UI with an edit option for priority and due time.
+ * A separate page for managing sub-lists of a given task.
+ * The heading is the task's name. Then a row of sub-lists with "Add new sub-list" at top,
+ * plus a form if mode=add. If a listId is chosen, we show that sub-list's items below.
  */
 function SubListsPage() {
   const { taskId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  const [taskName, setTaskName] = useState("Loading...");
   const [subLists, setSubLists] = useState([]);
+  const [showAddList, setShowAddList] = useState(false);
+  const [newListName, setNewListName] = useState("");
+
+  // Which sub-list is selected
   const [selectedSubListId, setSelectedSubListId] = useState(null);
 
-  const [showAddInput, setShowAddInput] = useState(false);
-  const [newSubListName, setNewSubListName] = useState("");
-
-  // For the currently selected sub-list's items
-  const [subListItems, setSubListItems] = useState([]);
+  // Items for the selected sub-list
+  const [items, setItems] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
   const [editingItems, setEditingItems] = useState({});
 
   useEffect(() => {
+    fetchTaskName();
     fetchSubLists();
   }, [taskId]);
 
-  // Whenever selectedSubListId changes, fetch that sub-list's items
+  // On mount or param change, see if we have mode=add or listId=xxx
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    const listId = searchParams.get("listId");
+    if (mode === "add") {
+      setShowAddList(true);
+      setSelectedSubListId(null);
+    } else if (listId) {
+      setSelectedSubListId(listId);
+      setShowAddList(false);
+    }
+  }, [searchParams]);
+
+  // If selectedSubListId changes, fetch items
   useEffect(() => {
     if (selectedSubListId) {
-      fetchSubListItems(selectedSubListId);
+      fetchItems(selectedSubListId);
     } else {
-      setSubListItems([]);
+      setItems([]);
     }
   }, [selectedSubListId]);
+
+  function fetchTaskName() {
+    axios
+      .get(`${TASKS_API_URL}/${taskId}`)
+      .then((res) => {
+        setTaskName(res.data.text || "Untitled Task");
+      })
+      .catch((err) => console.error("Error fetching task:", err));
+  }
 
   function fetchSubLists() {
     axios
       .get(`${SUBLISTS_API_URL}?taskId=${taskId}`)
-      .then((res) => {
-        setSubLists(res.data);
-        if (res.data.length > 0) {
-          setSelectedSubListId(res.data[0]._id); // auto-select first
-        }
-      })
+      .then((res) => setSubLists(res.data))
       .catch((err) => console.error("Error fetching sub-lists:", err));
   }
 
   function addSubList(e) {
     e.preventDefault();
-    if (!newSubListName.trim()) {
-      setShowAddInput(false);
+    if (!newListName.trim()) {
+      setShowAddList(false);
       return;
     }
     axios
-      .post(SUBLISTS_API_URL, { taskId, name: newSubListName })
+      .post(SUBLISTS_API_URL, { taskId, name: newListName })
       .then((res) => {
-        setNewSubListName("");
-        setShowAddInput(false);
+        setNewListName("");
+        setShowAddList(false);
         fetchSubLists();
-        setSelectedSubListId(res.data._id);
+        // auto-select the new list
+        setSearchParams({ listId: res.data._id });
       })
       .catch((err) => console.error("Error creating sub-list:", err));
   }
 
-  function fetchSubListItems(subListId) {
+  function fetchItems(subListId) {
     axios
       .get(`${SUBLISTS_API_URL}/${subListId}`)
       .then((res) => {
-        setSubListItems(res.data.items || []);
+        setItems(res.data.items || []);
       })
-      .catch((err) => console.error("Error fetching sub-list:", err));
+      .catch((err) => console.error("Error fetching sub-list items:", err));
+  }
+
+  // Switch sub-list
+  function selectSubList(listId) {
+    setSearchParams({ listId });
+  }
+
+  // Switch to "add new sub-list" mode
+  function selectAddNewList() {
+    setSearchParams({ mode: "add" });
   }
 
   // Items logic
-  function addItemToSubList(text, priority, dueTime) {
-    if (!selectedSubListId) return;
+  function toggleCompleteItem(item) {
     axios
-      .post(`${SUBLISTS_API_URL}/${selectedSubListId}/items`, {
-        text,
-        priority,
-        dueTime,
+      .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${item._id}`, {
+        completed: !item.completed,
       })
-      .then((res) => setSubListItems(res.data.items || []))
-      .catch((err) => console.error("Error adding item:", err));
+      .then((res) => setItems(res.data.items || []))
+      .catch((err) => console.error("Error toggling item:", err));
   }
 
   function toggleExpandItem(itemId) {
@@ -100,94 +129,97 @@ function SubListsPage() {
     }));
   }
 
-  function toggleCompleteItem(item) {
-    axios
-      .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${item._id}`, {
-        completed: !item.completed,
-      })
-      .then((res) => setSubListItems(res.data.items || []))
-      .catch((err) => console.error("Error toggling item:", err));
-  }
-
-  function deleteItem(itemId) {
-    axios
-      .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
-      .then((res) => setSubListItems(res.data.items || []))
-      .catch((err) => console.error("Error deleting item:", err));
-  }
-
-  // Editing item
   function startEditingItem(itemId) {
-    setEditingItems((prev) => ({
-      ...prev,
-      [itemId]: true,
-    }));
+    setEditingItems((prev) => ({ ...prev, [itemId]: true }));
   }
 
   function stopEditingItem(itemId) {
-    setEditingItems((prev) => ({
-      ...prev,
-      [itemId]: false,
-    }));
+    setEditingItems((prev) => ({ ...prev, [itemId]: false }));
   }
 
   function saveItemEdits(itemId, updatedFields) {
     axios
       .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`, updatedFields)
       .then((res) => {
-        setSubListItems(res.data.items || []);
+        setItems(res.data.items || []);
         stopEditingItem(itemId);
       })
       .catch((err) => console.error("Error saving item edits:", err));
   }
 
+  function deleteItem(itemId) {
+    axios
+      .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
+      .then((res) => setItems(res.data.items || []))
+      .catch((err) => console.error("Error deleting item:", err));
+  }
+
+  function addNewItem(text, priority, dueTime) {
+    axios
+      .post(`${SUBLISTS_API_URL}/${selectedSubListId}/items`, {
+        text,
+        priority,
+        dueTime,
+      })
+      .then((res) => setItems(res.data.items || []))
+      .catch((err) => console.error("Error adding item:", err));
+  }
+
   return (
-    <div className="sub-list-container">
-      <h2>Sub-Lists for Task</h2>
+    <div className="app-container">
+      <h1>Task: {taskName}</h1>
       <button onClick={() => navigate(-1)}>Back</button>
 
-      {/* Horizontal row of sub-lists, just like spaces */}
-      <div className="sub-lists-inline">
+      {/* Horizontal row of sub-lists. "Add New List" is at the top. */}
+      <div className="sub-lists-row">
+        <span>Sub-lists:</span>
+        <div
+          className="space-item"
+          style={{ display: "inline-block" }}
+          onClick={selectAddNewList}
+        >
+          Add New List
+        </div>
+
         {subLists.map((sub) => (
           <div
             key={sub._id}
-            className={`sub-list-item ${
+            className={`space-item ${
               sub._id === selectedSubListId ? "selected" : ""
             }`}
-            onClick={() => setSelectedSubListId(sub._id)}
+            onClick={() => selectSubList(sub._id)}
           >
             {sub.name}
           </div>
         ))}
-
-        {showAddInput ? (
-          <form onSubmit={addSubList} style={{ display: "inline-flex", gap: "8px" }}>
-            <input
-              className="add-sublist-input"
-              value={newSubListName}
-              onChange={(e) => setNewSubListName(e.target.value)}
-              placeholder="List name..."
-            />
-            <button type="submit">OK</button>
-          </form>
-        ) : (
-          <button onClick={() => setShowAddInput(true)}>Add</button>
-        )}
       </div>
 
-      {/* If a sub-list is selected, show its items */}
-      {selectedSubListId && (
-        <SubListItemsUI
-          items={subListItems}
+      {/* If mode=add, show "Add Sub-List" form */}
+      {showAddList && (
+        <form onSubmit={addSubList} style={{ marginBottom: "20px" }}>
+          <input
+            className="add-space-input"
+            placeholder="Sub-list name..."
+            value={newListName}
+            onChange={(e) => setNewListName(e.target.value)}
+          />
+          <button type="submit">OK</button>
+        </form>
+      )}
+
+      {/* If a sub-list is selected, show items */}
+      {selectedSubListId && !showAddList && (
+        <SubListItems
+          items={items}
           expandedItems={expandedItems}
           editingItems={editingItems}
-          onExpand={toggleExpandItem}
+          onToggleComplete={toggleCompleteItem}
+          onToggleExpand={toggleExpandItem}
           onStartEdit={startEditingItem}
           onStopEdit={stopEditingItem}
           onSaveEdit={saveItemEdits}
-          onToggleComplete={toggleCompleteItem}
-          onDelete={deleteItem}
-          onAddItem={addItemToSubList}
+          onDeleteItem={deleteItem}
+          onAddItem={addNewItem}
         />
       )}
     </div>
@@ -195,20 +227,18 @@ function SubListsPage() {
 }
 
 /**
- * SubListItemsUI:
- * Renders items in a tasks-like UI with "Show More" -> "Mark Complete," "Delete," "Edit," etc.
- * Also has a form to add a new item with optional priority and dueTime.
+ * SubListItems: the same tasks-like UI for sub-list items
  */
-function SubListItemsUI({
+function SubListItems({
   items,
   expandedItems,
   editingItems,
-  onExpand,
+  onToggleComplete,
+  onToggleExpand,
   onStartEdit,
   onStopEdit,
   onSaveEdit,
-  onToggleComplete,
-  onDelete,
+  onDeleteItem,
   onAddItem,
 }) {
   const [newItemText, setNewItemText] = useState("");
@@ -227,8 +257,9 @@ function SubListItemsUI({
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: "600px" }}>
-      <form className="new-item-form" onSubmit={handleAddItem}>
+    <div className="tasks-container">
+      {/* Add item form */}
+      <form className="new-task-form" onSubmit={handleAddItem}>
         <div className="form-row">
           <input
             type="text"
@@ -278,57 +309,63 @@ function SubListItemsUI({
         <button type="submit">Add</button>
       </form>
 
-      <ul className="items-list">
+      <ul className="tasks-list">
         {items.map((item) => {
           const isExpanded = expandedItems[item._id] || false;
           const isEditing = editingItems[item._id] || false;
-          // For screen readers: text + priority
-          const readText = `${item.text}${
-            item.priority !== "none" ? `, Priority: ${item.priority}` : ""
-          }`;
+
+          // Priority highlighting
+          let priorityClass = "";
+          if (item.priority === "high") priorityClass = "priority-high";
+          if (item.priority === "priority") priorityClass = "priority-normal";
 
           return (
             <li
               key={item._id}
-              className="items-list-item"
-              style={{
-                textDecoration: item.completed ? "line-through" : "none",
-              }}
+              className={`tasks-list-item ${priorityClass}`}
               tabIndex={-1}
             >
-              {/* Collapsed row */}
-              <div className="collapsed-row">
-                <div className="text-with-priority" aria-label={readText}>
-                  {readText}
+              {/* Mark as complete checkbox */}
+              <input
+                type="checkbox"
+                className="mark-complete-checkbox"
+                checked={item.completed}
+                onChange={() => onToggleComplete(item)}
+                aria-label={`Mark ${item.text} as complete`}
+              />
+
+              {/* Main content clickable to expand */}
+              <div
+                className="task-main-content"
+                onClick={() => onToggleExpand(item._id)}
+                aria-expanded={isExpanded}
+              >
+                <div className="collapsed-row">
+                  <div className="text-with-priority">
+                    {item.text}
+                    {item.priority !== "none" && ` (Priority: ${item.priority})`}
+                  </div>
+                  <button className="show-more-btn">
+                    {isExpanded ? "▲" : "▼"}
+                  </button>
                 </div>
-                <button
-                  className="show-more-btn"
-                  onClick={() => onExpand(item._id)}
-                  aria-expanded={isExpanded}
-                >
-                  {isExpanded ? "Hide" : "Show More"}
-                </button>
               </div>
 
+              {/* Expanded row */}
               {isExpanded && (
                 <div className="expanded-row">
-                  {/* If not editing, show MarkComplete, Delete, Edit */}
                   {!isEditing ? (
                     <div className="actions-row">
-                      <button onClick={() => onToggleComplete(item)}>
-                        {item.completed ? "Mark Incomplete" : "Mark Complete"}
-                      </button>
-                      <button className="delete-btn" onClick={() => onDelete(item._id)}>
+                      <button className="delete-btn" onClick={() => onDeleteItem(item._id)}>
                         Delete
                       </button>
                       <button onClick={() => onStartEdit(item._id)}>Edit</button>
                       {item.dueTime && <p>Due Time: {item.dueTime}</p>}
-                      {item.priority !== "none" && <p>Priority: {item.priority}</p>}
                     </div>
                   ) : (
                     <ItemEditForm
                       item={item}
-                      onSave={(updatedFields) => onSaveEdit(item._id, updatedFields)}
+                      onSave={(updated) => onSaveEdit(item._id, updated)}
                       onCancel={() => onStopEdit(item._id)}
                     />
                   )}
@@ -342,9 +379,7 @@ function SubListItemsUI({
   );
 }
 
-/**
- * ItemEditForm: inline edit for text, priority, dueTime
- */
+/** ItemEditForm: inline edit for text, priority, dueTime */
 function ItemEditForm({ item, onSave, onCancel }) {
   const [editText, setEditText] = useState(item.text);
   const [editPriority, setEditPriority] = useState(item.priority || "none");

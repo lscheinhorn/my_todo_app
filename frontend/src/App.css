@@ -173,20 +173,19 @@ html, body {
   outline-offset: 4px;
 }
 
-/* Mark as complete checkbox on the left */
+/* Mark as complete on the left */
 .mark-complete-checkbox {
   margin-right: 10px;
   transform: scale(1.2);
   cursor: pointer;
 }
 
-/* Entire row clickable to expand (except checkbox) */
+/* The main content is clickable to expand */
 .task-main-content {
   flex: 1;
   cursor: pointer;
 }
 
-/* Collapsed row: text, priority, arrow */
 .collapsed-row {
   display: flex;
   justify-content: space-between;
@@ -198,7 +197,6 @@ html, body {
   margin-right: 10px;
 }
 
-/* Show More arrow button */
 .show-more-btn {
   background: none;
   border: none;
@@ -206,15 +204,15 @@ html, body {
   cursor: pointer;
 }
 
-/* Expanded row: displays actions, edit form, sub-lists, etc. */
+/* Expanded row */
 .expanded-row {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
 }
 
-/* Action buttons row */
 .actions-row {
   display: flex;
   flex-wrap: wrap;
@@ -281,7 +279,7 @@ html, body {
   cursor: pointer;
 }
 
-/* Sub-list items also have priority highlighting */
+/* Sub-list items also get priority highlighting */
 .items-list {
   list-style-type: none;
   margin: 0;
@@ -303,6 +301,7 @@ html, body {
   outline-offset: 4px;
 }
 
+/* Mark complete on the left for items */
 .mark-complete-item-checkbox {
   margin-right: 10px;
   transform: scale(1.2);
@@ -313,5 +312,3 @@ html, body {
   flex: 1;
   cursor: pointer;
 }
-
-/* etc. */

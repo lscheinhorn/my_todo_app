@@ -9,17 +9,11 @@ import SubListsDropdown from "./SubListsDropdown";
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 
 function TasksPage() {
-  // Space selection
   const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");
-  // Tasks
   const [tasks, setTasks] = useState([]);
-  // Sorting
   const [sortBy, setSortBy] = useState("dueDate");
-  // Bulk Edit
   const [bulkEdit, setBulkEdit] = useState(false);
-  // Expanded tasks
   const [expandedTasks, setExpandedTasks] = useState({});
-  // Editing tasks
   const [editingTasks, setEditingTasks] = useState({});
 
   // New Task form
@@ -71,7 +65,8 @@ function TasksPage() {
       dueDate: dueDateToSend,
     };
 
-    axios.post(TASKS_API_URL, taskData)
+    axios
+      .post(TASKS_API_URL, taskData)
       .then(() => {
         setNewTaskText("");
         setNewTaskPriority("none");
@@ -367,9 +362,9 @@ function TasksPage() {
                       </div>
                     </div>
 
-                    {/* If expanded, show actions and sub-lists */}
+                    {/* If expanded, show actions, sub-lists dropdown */}
                     {isExpanded && (
-                      <div className="expanded-row" style={{ width: "100%" }}>
+                      <div className="expanded-row">
                         {selectedSpaceId === "DELETED" ? (
                           <div className="actions-row">
                             <button onClick={() => restoreTask(task._id)}>Restore</button>
@@ -384,9 +379,11 @@ function TasksPage() {
                                 >
                                   Delete
                                 </button>
-                                <button onClick={() => startEditingTask(task._id)}>Edit</button>
+                                <button onClick={() => startEditingTask(task._id)}>
+                                  Edit
+                                </button>
 
-                                {/* Sub-lists dropdown inline */}
+                                {/* Minimal sub-lists dropdown => opens a new page */}
                                 <SubListsDropdown taskId={task._id} />
                               </div>
                             ) : (
@@ -413,9 +410,7 @@ function TasksPage() {
   );
 }
 
-/**
- * Inline edit form for a task: text, priority, due date
- */
+/** Inline edit form for a task: text, priority, due date, etc. */
 function TaskEditForm({ task, onSave, onCancel }) {
   const [editText, setEditText] = useState(task.text);
   const [editPriority, setEditPriority] = useState(task.priority || "none");
