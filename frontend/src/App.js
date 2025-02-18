@@ -3,58 +3,49 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
+import Spaces from "./Spaces";
 import SubListView from "./SubListView";
 
-/**
- * Adjust these endpoints to match your actual deployment or environment variables.
- * Example: If your backend is running locally, you might use "http://localhost:5001/tasks"
- */
+// Adjust to your actual backend endpoints
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
-/**
- * This component displays the main tasks UI:
- * - Fetches tasks from the backend, filtered by the selected space (e.g. "ALL", "DELETED", or a specific spaceId).
- * - Allows creation of new tasks with text, priority, and optional due date.
- * - Supports sorting, bulk editing, and toggling tasks as expanded/collapsed.
- * - Handles sub-list creation and viewing via a separate SubListView component.
- * - Handles soft-deletion and restoring of tasks.
- */
 function App() {
-  // ---------- Space Selection ----------
-  // If you have a separate "Spaces" component, you might set selectedSpaceId from there.
-  // For now, we store it locally. "ALL" or "DELETED" are special values.
+  // The space ID the user has selected (e.g. "ALL", "DELETED", or a real Mongo _id)
   const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");
 
-  // ---------- Main Task List State ----------
+  // The main array of tasks from the backend
   const [tasks, setTasks] = useState([]);
 
-  // ---------- Sorting ----------
-  // "dueDate", "priority", or "createdAt"
+  // Sorting: "dueDate", "priority", or "createdAt"
   const [sortBy, setSortBy] = useState("dueDate");
 
-  // ---------- Bulk Edit and Expansion State ----------
+  // Bulk edit mode
   const [bulkEdit, setBulkEdit] = useState(false);
+
+  // Tracks which tasks are expanded (to show “Mark Complete,” “Delete,” etc.)
   const [expandedTasks, setExpandedTasks] = useState({});
 
-  // ---------- Sub-List View State ----------
+  // Sub-list logic
   const [viewingSubList, setViewingSubList] = useState(false);
   const [selectedSubListId, setSelectedSubListId] = useState(null);
 
-  // ---------- New Task Fields ----------
+  // New task form fields
   const [newTaskText, setNewTaskText] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("none");
   const [showNewTaskDueDate, setShowNewTaskDueDate] = useState(false);
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
 
-  // ----- Fetch tasks whenever selectedSpaceId changes -----
+  // Whenever selectedSpaceId changes, fetch tasks
   useEffect(() => {
     fetchTasks();
   }, [selectedSpaceId]);
 
   /**
-   * Fetch tasks from the backend. If selectedSpaceId is "ALL", fetch all tasks.
-   * If "DELETED", fetch tasks that were soft-deleted. Otherwise fetch tasks for a specific space.
+   * Fetch tasks from the backend based on selectedSpaceId.
+   * - "ALL": tasks with deletedAt=null
+   * - "DELETED": tasks with deletedAt != null in last 30 days
+   * - real spaceId: tasks with that spaceId, deletedAt=null
    */
   function fetchTasks() {
     if (selectedSpaceId === "ALL") {
@@ -65,23 +56,20 @@ function App() {
       return;
     }
     if (selectedSpaceId === "DELETED") {
-      // fetch deleted tasks
       axios
         .get(`${TASKS_API_URL}?spaceId=DELETED`)
         .then((res) => setTasks(res.data))
         .catch((err) => console.error("Error fetching deleted tasks:", err));
       return;
     }
-    // Otherwise, fetch tasks for the specific space
+    // Otherwise, fetch tasks for that specific space ID
     axios
       .get(`${TASKS_API_URL}?spaceId=${selectedSpaceId}`)
       .then((res) => setTasks(res.data))
       .catch((err) => console.error("Error fetching tasks:", err));
   }
 
-  /**
-   * Add a new task to the current space, with optional due date and priority.
-   */
+  // Create a new task
   function addTask(e) {
     e.preventDefault();
     if (!newTaskText.trim()) return;
@@ -112,9 +100,7 @@ function App() {
       .catch((err) => console.error("Error adding task:", err));
   }
 
-  /**
-   * Toggle a task's completion state.
-   */
+  // Mark a task as complete/incomplete
   function markComplete(task) {
     axios
       .put(`${TASKS_API_URL}/${task._id}`, {
@@ -125,9 +111,7 @@ function App() {
       .catch((err) => console.error("Error toggling complete:", err));
   }
 
-  /**
-   * Soft-delete a task (moves it to "deleted" space).
-   */
+  // Soft-delete a task (moves it to “deleted”)
   function deleteTask(taskId) {
     axios
       .delete(`${TASKS_API_URL}/${taskId}`)
@@ -135,9 +119,7 @@ function App() {
       .catch((err) => console.error("Error deleting task:", err));
   }
 
-  /**
-   * Restore a soft-deleted task (renamed from "undelete").
-   */
+  // Restore a deleted task
   function restoreTask(taskId) {
     axios
       .put(`${TASKS_API_URL}/${taskId}/restore`)
@@ -145,9 +127,7 @@ function App() {
       .catch((err) => console.error("Error restoring task:", err));
   }
 
-  /**
-   * Sort tasks in memory based on the selected sortBy setting.
-   */
+  // Sorting tasks in memory
   function getSortedTasks() {
     const sorted = [...tasks];
     sorted.sort((a, b) => {
@@ -164,7 +144,6 @@ function App() {
       const bCreated = new Date(b.createdAt);
 
       if (sortBy === "dueDate") {
-        // Sort by due date ascending
         if (!aDue && bDue) return 1;
         if (aDue && !bDue) return -1;
         if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
@@ -174,33 +153,30 @@ function App() {
         if (aPrio !== bPrio) {
           return bPrio - aPrio;
         }
-        // Then by created date ascending
+        // Then by creation date ascending
         return aCreated - bCreated;
       } else if (sortBy === "priority") {
-        // Sort by priority descending
+        // Priority descending
         if (aPrio !== bPrio) {
           return bPrio - aPrio;
         }
-        // Then by due date ascending
+        // Then due date ascending
         if (!aDue && bDue) return 1;
         if (aDue && !bDue) return -1;
         if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
           return aDue - bDue;
         }
-        // Finally by created date ascending
+        // Then created date ascending
         return aCreated - bCreated;
       } else {
         // sortBy === "createdAt"
-        // Sort by creation date ascending
         return aCreated - bCreated;
       }
     });
     return sorted;
   }
 
-  /**
-   * Group tasks by due date if sortBy === "dueDate". Otherwise, return a single group.
-   */
+  // Group tasks by due date if sortBy === "dueDate"
   function groupTasksByDueDate(sortedTasks) {
     if (sortBy !== "dueDate") {
       return [{ dateLabel: null, tasks: sortedTasks }];
@@ -241,13 +217,10 @@ function App() {
     });
   }
 
-  // Generate sorted and grouped tasks
   const sortedTasks = getSortedTasks();
   const groupedTasks = groupTasksByDueDate(sortedTasks);
 
-  /**
-   * Toggle a task's expanded/collapsed state.
-   */
+  // Toggle expansion for a single task
   function toggleExpandTask(taskId) {
     setExpandedTasks((prev) => ({
       ...prev,
@@ -255,9 +228,7 @@ function App() {
     }));
   }
 
-  /**
-   * Toggle bulk edit mode, which expands all tasks automatically.
-   */
+  // Bulk edit: expand all or collapse all
   function toggleBulkEdit() {
     const nextValue = !bulkEdit;
     setBulkEdit(nextValue);
@@ -272,12 +243,11 @@ function App() {
     }
   }
 
-  // ---------- Sub-list logic: create or view sub-lists ----------
+  // Sub-list logic: create or view sub-lists
   function addSubList(taskId) {
     axios
       .post(SUBLISTS_API_URL, { taskId, name: "New List" })
       .then((res) => {
-        // Navigate to the new sub-list
         setSelectedSubListId(res.data._id);
         setViewingSubList(true);
       })
@@ -289,7 +259,7 @@ function App() {
     setViewingSubList(true);
   }
 
-  // If currently viewing a sub-list, show SubListView instead of the tasks
+  // If user is viewing a sub-list, show SubListView
   if (viewingSubList && selectedSubListId) {
     return (
       <SubListView
@@ -302,33 +272,24 @@ function App() {
     );
   }
 
-  // Helper for priority styling
+  // Helper for priority CSS classes
   function getPriorityClass(task) {
     if (task.priority === "high") return "priority-high";
     if (task.priority === "priority") return "priority-normal";
     return "";
   }
 
-  // ---------- Render UI ----------
   return (
     <div className="app-container">
       <h1>My To-Do List</h1>
 
-      {/* Space selection. If you have a separate "Spaces" component, remove or adapt this. */}
-      <div className="spaces-row">
-        <label htmlFor="spaceSelect">Space:</label>
-        <select
-          id="spaceSelect"
-          value={selectedSpaceId}
-          onChange={(e) => setSelectedSpaceId(e.target.value)}
-        >
-          <option value="ALL">View All</option>
-          <option value="DELETED">Deleted Tasks</option>
-          {/* If you have additional spaces, you could map them here, or handle them in a separate component */}
-        </select>
-      </div>
+      {/* RENDER SPACES COMPONENT HERE */}
+      <Spaces
+        selectedSpaceId={selectedSpaceId}
+        onSpaceSelect={(id) => setSelectedSpaceId(id)}
+      />
 
-      {/* New Task Form (disabled if "ALL" or "DELETED") */}
+      {/* New Task Form (only if not in DELETED space) */}
       {selectedSpaceId !== "DELETED" && (
         <form className="new-task-form" onSubmit={addTask}>
           <div className="form-row">
@@ -406,7 +367,7 @@ function App() {
         </button>
       </div>
 
-      {/* Task list, grouped by date if "dueDate" sorting */}
+      {/* Render tasks, grouped by date if needed */}
       <div className="tasks-container">
         {groupedTasks.map((group) => (
           <div key={group.dateLabel || "no-date"} className="date-group">
@@ -439,7 +400,7 @@ function App() {
                     {/* Expanded View */}
                     {isExpanded && (
                       <div className="task-expanded">
-                        {/* If in "DELETED" space, show "Restore" button only */}
+                        {/* If in "DELETED" space, show "Restore" only */}
                         {selectedSpaceId === "DELETED" ? (
                           <div className="task-actions">
                             <button onClick={() => restoreTask(task._id)}>
@@ -453,7 +414,6 @@ function App() {
                                 ? "Mark Incomplete"
                                 : "Mark Complete"}
                             </button>
-                            {/* Example "Delete" button */}
                             <button
                               className="delete-btn"
                               onClick={() => deleteTask(task._id)}
@@ -461,7 +421,7 @@ function App() {
                               Delete
                             </button>
 
-                            {/* Sub-list Buttons for this task */}
+                            {/* Sub-list Buttons */}
                             <SubListButtons
                               taskId={task._id}
                               onAddSubList={addSubList}
@@ -469,8 +429,6 @@ function App() {
                             />
                           </div>
                         )}
-
-                        {/* Additional info (like created date or due date) can go here if desired */}
                       </div>
                     )}
                   </li>

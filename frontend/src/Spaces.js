@@ -52,7 +52,7 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
       </div>
 
       <ul className="spaces-list">
-        {/* “View All” item */}
+        {/* “View All” */}
         <li
           className={
             selectedSpaceId === "ALL" ? "spaces-list-item selected" : "spaces-list-item"
@@ -62,6 +62,17 @@ function Spaces({ onSpaceSelect, selectedSpaceId }) {
           View All
         </li>
 
+        {/* “Deleted Tasks” */}
+        <li
+          className={
+            selectedSpaceId === "DELETED" ? "spaces-list-item selected" : "spaces-list-item"
+          }
+          onClick={() => onSpaceSelect("DELETED")}
+        >
+          Deleted Tasks
+        </li>
+
+        {/* Actual Spaces from the database */}
         {spaces.map((space) => (
           <li
             key={space._id}

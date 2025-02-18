@@ -9,7 +9,6 @@ function SubListView({ subListId, onBack }) {
   const [subList, setSubList] = useState(null);
   const [newItemText, setNewItemText] = useState("");
 
-  // Fetch this sub-list on mount
   useEffect(() => {
     fetchSubList();
   }, [subListId]);
@@ -21,14 +20,11 @@ function SubListView({ subListId, onBack }) {
       .catch((err) => console.error("Error fetching sub-list:", err));
   };
 
-  // Add an item to this sub-list
   const addItem = (e) => {
     e.preventDefault();
     if (!newItemText.trim()) return;
     axios
-      .post(`${SUBLISTS_API_URL}/${subListId}/items`, {
-        text: newItemText,
-      })
+      .post(`${SUBLISTS_API_URL}/${subListId}/items`, { text: newItemText })
       .then((res) => {
         setNewItemText("");
         setSubList(res.data);
@@ -36,7 +32,6 @@ function SubListView({ subListId, onBack }) {
       .catch((err) => console.error("Error adding item:", err));
   };
 
-  // Toggle item completion
   const toggleItem = (itemId) => {
     if (!subList) return;
     const item = subList.items.find((i) => i._id === itemId);
@@ -49,7 +44,6 @@ function SubListView({ subListId, onBack }) {
       .catch((err) => console.error("Error toggling item:", err));
   };
 
-  // Delete an item
   const deleteItem = (itemId) => {
     axios
       .delete(`${SUBLISTS_API_URL}/${subListId}/items/${itemId}`)
@@ -71,7 +65,6 @@ function SubListView({ subListId, onBack }) {
       <h2>{subList.name}</h2>
       <button onClick={onBack}>Go Back to Tasks</button>
 
-      {/* Add item form */}
       <form onSubmit={addItem} style={{ marginTop: "10px", marginBottom: "20px" }}>
         <input
           type="text"
@@ -82,7 +75,6 @@ function SubListView({ subListId, onBack }) {
         <button type="submit">Add</button>
       </form>
 
-      {/* Items list */}
       <ul style={{ listStyle: "none", paddingLeft: 0 }}>
         {subList.items.map((item) => (
           <li
