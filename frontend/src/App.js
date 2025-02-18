@@ -3,17 +3,17 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import TasksPage from "./TasksPage";
-import SubListPage from "./SubListPage";
+import SubListsPage from "./SubListsPage";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Main tasks UI */}
+        {/* Main tasks page */}
         <Route path="/" element={<TasksPage />} />
 
-        {/* Sub-list page */}
-        <Route path="/sublist/:subListId" element={<SubListPage />} />
+        {/* Sub-lists page for a given task */}
+        <Route path="/sublist/:taskId" element={<SubListsPage />} />
       </Routes>
     </BrowserRouter>
   );

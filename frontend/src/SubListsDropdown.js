@@ -8,12 +8,12 @@ const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
 /**
  * SubListsDropdown:
- * - "List: [dropdown of sub-lists] [Add]"
- * - When user picks a sub-list, navigate to /sublist/:subListId
+ * "List: [count] [Go to Sub-lists page]" + [Add Sub-list form]
+ * We do not pick sub-lists here; we just navigate to /sublist/:taskId
  */
 function SubListsDropdown({ taskId }) {
   const [subLists, setSubLists] = useState([]);
-  const [showAddInput, setShowAddInput] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const [newListName, setNewListName] = useState("");
   const navigate = useNavigate();
 
@@ -28,60 +28,43 @@ function SubListsDropdown({ taskId }) {
       .catch((err) => console.error("Error fetching sub-lists:", err));
   }
 
-  function handleAddSubList() {
+  function handleAdd(e) {
+    e.preventDefault();
     if (!newListName.trim()) {
-      setShowAddInput(false);
+      setShowAdd(false);
       return;
     }
     axios
       .post(SUBLISTS_API_URL, { taskId, name: newListName })
-      .then((res) => {
+      .then(() => {
         setNewListName("");
-        setShowAddInput(false);
-        // Refresh
+        setShowAdd(false);
         fetchSubLists();
       })
       .catch((err) => console.error("Error creating sub-list:", err));
   }
 
-  function handleSelectSubList(subListId) {
-    // Navigate to /sublist/:subListId
-    navigate(`/sublist/${subListId}`);
+  function goToSubListsPage() {
+    navigate(`/sublist/${taskId}`);
   }
 
   return (
     <div style={{ marginTop: "10px" }}>
-      <span style={{ marginRight: "8px" }}>List:</span>
-      {subLists.length > 0 ? (
-        <select
-          onChange={(e) => handleSelectSubList(e.target.value)}
-          defaultValue=""
-        >
-          <option value="" disabled>
-            -- Select a list --
-          </option>
-          {subLists.map((sub) => (
-            <option key={sub._id} value={sub._id}>
-              {sub.name}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <em>No lists yet</em>
-      )}
+      <span>Lists: {subLists.length}</span>{" "}
+      <button onClick={goToSubListsPage}>Open</button>
 
-      {showAddInput ? (
-        <>
+      {showAdd ? (
+        <form onSubmit={handleAdd} style={{ display: "inline-block", marginLeft: "10px" }}>
           <input
             className="add-space-input"
             placeholder="List name..."
             value={newListName}
             onChange={(e) => setNewListName(e.target.value)}
           />
-          <button onClick={handleAddSubList}>OK</button>
-        </>
+          <button type="submit">OK</button>
+        </form>
       ) : (
-        <button onClick={() => setShowAddInput(true)} style={{ marginLeft: "10px" }}>
+        <button onClick={() => setShowAdd(true)} style={{ marginLeft: "10px" }}>
           Add
         </button>
       )}

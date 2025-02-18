@@ -1,58 +1,96 @@
-// SubListPage.js
+// SubListsPage.js
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
+import "./App.css";
 
 const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
 /**
- * SubListPage:
- * A mini to-do app for sub-list items. 
- * We store an optional "dueTime" (HH:MM) and "priority," 
- * then sort by time if set, then priority, then createdAt.
+ * SubListsPage:
+ * A page to manage all sub-lists of a single task (identified by taskId).
+ * We show a row of sub-lists at the top, letting the user pick which one is active,
+ * plus an "Add" form for new sub-lists. Then we display items of the selected sub-list
+ * in a tasks-like UI with an edit option for priority and due time.
  */
-function SubListPage() {
-  const { subListId } = useParams();
+function SubListsPage() {
+  const { taskId } = useParams();
   const navigate = useNavigate();
 
-  const [subList, setSubList] = useState(null);
-  const [newItemText, setNewItemText] = useState("");
-  const [newItemPriority, setNewItemPriority] = useState("none");
-  const [showDueTime, setShowDueTime] = useState(false);
-  const [newItemDueTime, setNewItemDueTime] = useState("");
+  const [subLists, setSubLists] = useState([]);
+  const [selectedSubListId, setSelectedSubListId] = useState(null);
 
-  // Which items are expanded
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [newSubListName, setNewSubListName] = useState("");
+
+  // For the currently selected sub-list's items
+  const [subListItems, setSubListItems] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
+  const [editingItems, setEditingItems] = useState({});
 
   useEffect(() => {
-    fetchSubList();
-  }, [subListId]);
+    fetchSubLists();
+  }, [taskId]);
 
-  function fetchSubList() {
+  // Whenever selectedSubListId changes, fetch that sub-list's items
+  useEffect(() => {
+    if (selectedSubListId) {
+      fetchSubListItems(selectedSubListId);
+    } else {
+      setSubListItems([]);
+    }
+  }, [selectedSubListId]);
+
+  function fetchSubLists() {
+    axios
+      .get(`${SUBLISTS_API_URL}?taskId=${taskId}`)
+      .then((res) => {
+        setSubLists(res.data);
+        if (res.data.length > 0) {
+          setSelectedSubListId(res.data[0]._id); // auto-select first
+        }
+      })
+      .catch((err) => console.error("Error fetching sub-lists:", err));
+  }
+
+  function addSubList(e) {
+    e.preventDefault();
+    if (!newSubListName.trim()) {
+      setShowAddInput(false);
+      return;
+    }
+    axios
+      .post(SUBLISTS_API_URL, { taskId, name: newSubListName })
+      .then((res) => {
+        setNewSubListName("");
+        setShowAddInput(false);
+        fetchSubLists();
+        setSelectedSubListId(res.data._id);
+      })
+      .catch((err) => console.error("Error creating sub-list:", err));
+  }
+
+  function fetchSubListItems(subListId) {
     axios
       .get(`${SUBLISTS_API_URL}/${subListId}`)
-      .then((res) => setSubList(res.data))
+      .then((res) => {
+        setSubListItems(res.data.items || []);
+      })
       .catch((err) => console.error("Error fetching sub-list:", err));
   }
 
-  function handleAddItem(e) {
-    e.preventDefault();
-    if (!newItemText.trim()) return;
+  // Items logic
+  function addItemToSubList(text, priority, dueTime) {
+    if (!selectedSubListId) return;
     axios
-      .post(`${SUBLISTS_API_URL}/${subListId}/items`, {
-        text: newItemText,
-        priority: newItemPriority,
-        dueTime: showDueTime ? newItemDueTime : "",
+      .post(`${SUBLISTS_API_URL}/${selectedSubListId}/items`, {
+        text,
+        priority,
+        dueTime,
       })
-      .then((res) => {
-        setSubList(res.data);
-        setNewItemText("");
-        setNewItemPriority("none");
-        setShowDueTime(false);
-        setNewItemDueTime("");
-      })
-      .catch((err) => console.error("Error adding sub-list item:", err));
+      .then((res) => setSubListItems(res.data.items || []))
+      .catch((err) => console.error("Error adding item:", err));
   }
 
   function toggleExpandItem(itemId) {
@@ -64,92 +102,143 @@ function SubListPage() {
 
   function toggleCompleteItem(item) {
     axios
-      .put(`${SUBLISTS_API_URL}/${subListId}/items/${item._id}`, {
+      .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${item._id}`, {
         completed: !item.completed,
       })
-      .then((res) => setSubList(res.data))
+      .then((res) => setSubListItems(res.data.items || []))
       .catch((err) => console.error("Error toggling item:", err));
   }
 
   function deleteItem(itemId) {
     axios
-      .delete(`${SUBLISTS_API_URL}/${subListId}/items/${itemId}`)
-      .then((res) => setSubList(res.data))
+      .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
+      .then((res) => setSubListItems(res.data.items || []))
       .catch((err) => console.error("Error deleting item:", err));
   }
 
-  // Sort items by dueTime if set, then priority, then createdAt
-  function getSortedItems() {
-    if (!subList) return [];
-    const sorted = [...subList.items];
-
-    sorted.sort((a, b) => {
-      // completed last?
-      if (a.completed && !b.completed) return 1;
-      if (!a.completed && b.completed) return -1;
-
-      const priorityRank = { high: 2, priority: 1, none: 0 };
-      const aPrio = priorityRank[a.priority] || 0;
-      const bPrio = priorityRank[b.priority] || 0;
-
-      // parse a.dueTime, b.dueTime as HH:MM
-      function parseTime(t) {
-        if (!t) return null;
-        const [hh, mm] = t.split(":");
-        if (!hh || !mm) return null;
-        return parseInt(hh, 10) * 60 + parseInt(mm, 10);
-      }
-      const aTime = parseTime(a.dueTime);
-      const bTime = parseTime(b.dueTime);
-
-      if (aTime && !bTime) return -1; // a first
-      if (!aTime && bTime) return 1;  // b first
-      if (aTime && bTime && aTime !== bTime) {
-        return aTime - bTime; // earlier time first
-      }
-      // if times are same or both missing, compare priority desc
-      if (aPrio !== bPrio) {
-        return bPrio - aPrio;
-      }
-      // finally compare creation date
-      const aCreated = new Date(a.createdAt);
-      const bCreated = new Date(b.createdAt);
-      return aCreated - bCreated;
-    });
-
-    return sorted;
+  // Editing item
+  function startEditingItem(itemId) {
+    setEditingItems((prev) => ({
+      ...prev,
+      [itemId]: true,
+    }));
   }
 
-  const sortedItems = getSortedItems();
+  function stopEditingItem(itemId) {
+    setEditingItems((prev) => ({
+      ...prev,
+      [itemId]: false,
+    }));
+  }
 
-  if (!subList) {
-    return (
-      <div className="sub-list-container">
-        <h2>Loading Sub-List...</h2>
-        <button onClick={() => navigate(-1)}>Back</button>
-      </div>
-    );
+  function saveItemEdits(itemId, updatedFields) {
+    axios
+      .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`, updatedFields)
+      .then((res) => {
+        setSubListItems(res.data.items || []);
+        stopEditingItem(itemId);
+      })
+      .catch((err) => console.error("Error saving item edits:", err));
   }
 
   return (
     <div className="sub-list-container">
-      <h2>{subList.name}</h2>
+      <h2>Sub-Lists for Task</h2>
       <button onClick={() => navigate(-1)}>Back</button>
 
-      {/* Add new item form */}
-      <form onSubmit={handleAddItem} style={{ marginTop: "10px", marginBottom: "20px" }}>
-        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+      {/* Horizontal row of sub-lists, just like spaces */}
+      <div className="sub-lists-inline">
+        {subLists.map((sub) => (
+          <div
+            key={sub._id}
+            className={`sub-list-item ${
+              sub._id === selectedSubListId ? "selected" : ""
+            }`}
+            onClick={() => setSelectedSubListId(sub._id)}
+          >
+            {sub.name}
+          </div>
+        ))}
+
+        {showAddInput ? (
+          <form onSubmit={addSubList} style={{ display: "inline-flex", gap: "8px" }}>
+            <input
+              className="add-sublist-input"
+              value={newSubListName}
+              onChange={(e) => setNewSubListName(e.target.value)}
+              placeholder="List name..."
+            />
+            <button type="submit">OK</button>
+          </form>
+        ) : (
+          <button onClick={() => setShowAddInput(true)}>Add</button>
+        )}
+      </div>
+
+      {/* If a sub-list is selected, show its items */}
+      {selectedSubListId && (
+        <SubListItemsUI
+          items={subListItems}
+          expandedItems={expandedItems}
+          editingItems={editingItems}
+          onExpand={toggleExpandItem}
+          onStartEdit={startEditingItem}
+          onStopEdit={stopEditingItem}
+          onSaveEdit={saveItemEdits}
+          onToggleComplete={toggleCompleteItem}
+          onDelete={deleteItem}
+          onAddItem={addItemToSubList}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * SubListItemsUI:
+ * Renders items in a tasks-like UI with "Show More" -> "Mark Complete," "Delete," "Edit," etc.
+ * Also has a form to add a new item with optional priority and dueTime.
+ */
+function SubListItemsUI({
+  items,
+  expandedItems,
+  editingItems,
+  onExpand,
+  onStartEdit,
+  onStopEdit,
+  onSaveEdit,
+  onToggleComplete,
+  onDelete,
+  onAddItem,
+}) {
+  const [newItemText, setNewItemText] = useState("");
+  const [newItemPriority, setNewItemPriority] = useState("none");
+  const [showDueTime, setShowDueTime] = useState(false);
+  const [newItemDueTime, setNewItemDueTime] = useState("");
+
+  function handleAddItem(e) {
+    e.preventDefault();
+    if (!newItemText.trim()) return;
+    onAddItem(newItemText, newItemPriority, showDueTime ? newItemDueTime : "");
+    setNewItemText("");
+    setNewItemPriority("none");
+    setShowDueTime(false);
+    setNewItemDueTime("");
+  }
+
+  return (
+    <div style={{ width: "100%", maxWidth: "600px" }}>
+      <form className="new-item-form" onSubmit={handleAddItem}>
+        <div className="form-row">
           <input
             type="text"
             placeholder="New list item..."
             value={newItemText}
             onChange={(e) => setNewItemText(e.target.value)}
-            style={{ flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #333" }}
           />
           <select
             value={newItemPriority}
             onChange={(e) => setNewItemPriority(e.target.value)}
-            style={{ backgroundColor: "#2C2C2E", color: "#fff", borderRadius: "4px" }}
           >
             <option value="none">No Priority</option>
             <option value="priority">Priority</option>
@@ -157,13 +246,15 @@ function SubListPage() {
           </select>
         </div>
 
-        {/* Toggle due time input */}
         {!showDueTime ? (
-          <button type="button" onClick={() => {
-            setShowDueTime(true);
-            setNewItemDueTime("12:00");
-          }}>
-            Set deadline time
+          <button
+            type="button"
+            onClick={() => {
+              setShowDueTime(true);
+              setNewItemDueTime("12:00");
+            }}
+          >
+            Set due time
           </button>
         ) : (
           <>
@@ -172,10 +263,13 @@ function SubListPage() {
               value={newItemDueTime}
               onChange={(e) => setNewItemDueTime(e.target.value)}
             />
-            <button type="button" onClick={() => {
-              setShowDueTime(false);
-              setNewItemDueTime("");
-            }}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowDueTime(false);
+                setNewItemDueTime("");
+              }}
+            >
               Remove time
             </button>
           </>
@@ -184,45 +278,60 @@ function SubListPage() {
         <button type="submit">Add</button>
       </form>
 
-      {/* Render items, tasks-like UI */}
-      <ul style={{ listStyle: "none", padding: 0 }}>
-        {sortedItems.map((item) => {
+      <ul className="items-list">
+        {items.map((item) => {
           const isExpanded = expandedItems[item._id] || false;
+          const isEditing = editingItems[item._id] || false;
+          // For screen readers: text + priority
+          const readText = `${item.text}${
+            item.priority !== "none" ? `, Priority: ${item.priority}` : ""
+          }`;
+
           return (
             <li
               key={item._id}
-              className="tasks-list-item"
+              className="items-list-item"
               style={{
                 textDecoration: item.completed ? "line-through" : "none",
-                marginBottom: "8px",
               }}
               tabIndex={-1}
             >
-              {/* Collapsed */}
-              <div className="task-collapsed">
+              {/* Collapsed row */}
+              <div className="collapsed-row">
+                <div className="text-with-priority" aria-label={readText}>
+                  {readText}
+                </div>
                 <button
-                  type="button"
-                  className="task-title-button"
-                  onClick={() => toggleExpandItem(item._id)}
+                  className="show-more-btn"
+                  onClick={() => onExpand(item._id)}
                   aria-expanded={isExpanded}
                 >
-                  {item.text}
+                  {isExpanded ? "Hide" : "Show More"}
                 </button>
               </div>
 
-              {/* Expanded */}
               {isExpanded && (
-                <div className="task-expanded">
-                  <div className="task-actions">
-                    <button onClick={() => toggleCompleteItem(item)}>
-                      {item.completed ? "Mark Incomplete" : "Mark Complete"}
-                    </button>
-                    <button className="delete-btn" onClick={() => deleteItem(item._id)}>
-                      Delete
-                    </button>
-                  </div>
-                  {item.dueTime && <p>Deadline: {item.dueTime}</p>}
-                  {item.priority !== "none" && <p>Priority: {item.priority}</p>}
+                <div className="expanded-row">
+                  {/* If not editing, show MarkComplete, Delete, Edit */}
+                  {!isEditing ? (
+                    <div className="actions-row">
+                      <button onClick={() => onToggleComplete(item)}>
+                        {item.completed ? "Mark Incomplete" : "Mark Complete"}
+                      </button>
+                      <button className="delete-btn" onClick={() => onDelete(item._id)}>
+                        Delete
+                      </button>
+                      <button onClick={() => onStartEdit(item._id)}>Edit</button>
+                      {item.dueTime && <p>Due Time: {item.dueTime}</p>}
+                      {item.priority !== "none" && <p>Priority: {item.priority}</p>}
+                    </div>
+                  ) : (
+                    <ItemEditForm
+                      item={item}
+                      onSave={(updatedFields) => onSaveEdit(item._id, updatedFields)}
+                      onCancel={() => onStopEdit(item._id)}
+                    />
+                  )}
                 </div>
               )}
             </li>
@@ -233,4 +342,65 @@ function SubListPage() {
   );
 }
 
-export default SubListPage;
+/**
+ * ItemEditForm: inline edit for text, priority, dueTime
+ */
+function ItemEditForm({ item, onSave, onCancel }) {
+  const [editText, setEditText] = useState(item.text);
+  const [editPriority, setEditPriority] = useState(item.priority || "none");
+  const [editDueTime, setEditDueTime] = useState(item.dueTime || "");
+  const [editCompleted, setEditCompleted] = useState(item.completed || false);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    onSave({
+      text: editText,
+      priority: editPriority,
+      dueTime: editDueTime,
+      completed: editCompleted,
+    });
+  }
+
+  return (
+    <form className="edit-form" onSubmit={handleSubmit}>
+      <div className="edit-form-row">
+        <input
+          type="text"
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+        />
+        <select
+          value={editPriority}
+          onChange={(e) => setEditPriority(e.target.value)}
+        >
+          <option value="none">No Priority</option>
+          <option value="priority">Priority</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div className="edit-form-row">
+        <label>
+          <input
+            type="checkbox"
+            checked={editCompleted}
+            onChange={(e) => setEditCompleted(e.target.checked)}
+          />
+          Completed
+        </label>
+        <input
+          type="time"
+          value={editDueTime}
+          onChange={(e) => setEditDueTime(e.target.value)}
+        />
+      </div>
+      <div className="edit-form-row">
+        <button type="submit">Save</button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export default SubListsPage;

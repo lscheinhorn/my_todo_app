@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 
 const app = express();
 
-// Configure CORS properly
+// Configure CORS
 const corsOptions = {
   origin: "https://my-todo-app-frontend-catn.onrender.com", // or your actual frontend
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
@@ -52,16 +52,13 @@ const spaceSchema = new mongoose.Schema({
 });
 const Space = mongoose.model("Space", spaceSchema);
 
-/**
- * Sub-list schemas
- * We store 'dueTime' (String) for sub-list items, so we can sort by time of day if set.
- */
+// Sub-list schemas: each item can have text, completed, priority, and dueTime
 const subListItemSchema = new mongoose.Schema({
   text: String,
   completed: Boolean,
-  createdAt: { type: Date, default: Date.now },
   priority: { type: String, enum: ["none", "priority", "high"], default: "none" },
-  dueTime: { type: String, default: "" }, // e.g. "14:30" for 2:30 PM
+  dueTime: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
 const subListSchema = new mongoose.Schema({
@@ -86,7 +83,6 @@ app.get("/tasks", async (req, res) => {
   try {
     const { spaceId } = req.query;
     if (spaceId === "DELETED") {
-      // Show tasks with deletedAt != null in last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const tasks = await Task.find({
@@ -125,7 +121,7 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
-// PUT tasks/:id
+// PUT tasks/:id (edit text, completed, dueDate, priority)
 app.put("/tasks/:id", async (req, res) => {
   try {
     const updatedData = {
