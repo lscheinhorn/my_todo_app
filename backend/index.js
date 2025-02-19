@@ -427,6 +427,7 @@ app.delete("/sublists/:id/items/:itemId", async (req, res) => {
       return res.status(404).json({ message: "Sub-list not found" });
     }
 
+    // Check if the item is actually in the array
     const item = subList.items.id(req.params.itemId);
     console.log("Found item:", item);
 
@@ -435,7 +436,9 @@ app.delete("/sublists/:id/items/:itemId", async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    item.remove();
+    // Instead of `item.remove()`, do:
+    subList.items.pull(req.params.itemId);
+
     await subList.save();
     console.log("Item removed successfully. Updated subList:", subList);
 
