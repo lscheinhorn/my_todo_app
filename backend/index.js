@@ -414,21 +414,38 @@ app.put("/sublists/:id/items/:itemId", async (req, res) => {
  * - Remove an item from the sub-list
  */
 app.delete("/sublists/:id/items/:itemId", async (req, res) => {
+  console.log(
+    "DELETE sub-list item route: subListId =", req.params.id,
+    "itemId =", req.params.itemId
+  );
   try {
     const subList = await SubList.findById(req.params.id);
-    if (!subList) return res.status(404).json({ message: "Sub-list not found" });
+    console.log("Found subList doc:", subList);
+
+    if (!subList) {
+      console.log("No sub-list doc found for that ID");
+      return res.status(404).json({ message: "Sub-list not found" });
+    }
 
     const item = subList.items.id(req.params.itemId);
-    if (!item) return res.status(404).json({ message: "Item not found" });
+    console.log("Found item:", item);
 
-    item.remove(); // remove from the array
+    if (!item) {
+      console.log("No item found for that itemId");
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    item.remove();
     await subList.save();
+    console.log("Item removed successfully. Updated subList:", subList);
 
-    // Return the updated sub-list
     res.json(subList);
   } catch (err) {
     console.error("❌ Error deleting sub-list item:", err);
-    res.status(500).json({ message: "Error deleting sub-list item", error: err });
+    res.status(500).json({
+      message: "Error deleting sub-list item",
+      error: err.message || err,
+    });
   }
 });
 

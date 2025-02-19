@@ -177,6 +177,8 @@ function SubListsPage() {
   // Delete an item
   function deleteItem(itemId) {
     console.log("Deleting item:", itemId, "from sub-list:", selectedSubListId);
+    console.log("selectedSubListId is:", selectedSubListId);
+    console.log("itemId is:", itemId);
     
     axios
       .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
