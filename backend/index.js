@@ -1,4 +1,4 @@
-// index.js
+// index.js (Backend)
 
 const express = require("express");
 const cors = require("cors");
@@ -8,10 +8,10 @@ const app = express();
 
 // Configure CORS
 const corsOptions = {
-  origin: "https://my-todo-app-frontend-catn.onrender.com", // your actual frontend
+  origin: "https://my-todo-app-frontend-catn.onrender.com", // your actual frontend domain
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
 };
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -23,11 +23,13 @@ app.use((req, res, next) => {
 });
 
 // Connect to Mongo
-const mongoURI = process.env.MONGO_URI;
+const mongoURI = process.env.MONGO_URI || "mongodb://localhost:27017/todo";
 mongoose
   .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+// ====== SCHEMAS ======
 
 // Task schema
 const taskSchema = new mongoose.Schema({
@@ -44,10 +46,12 @@ const Task = mongoose.model("Task", taskSchema);
 // Space schema
 const spaceSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  // If you want to soft-delete spaces, add a deletedAt field:
+  // deletedAt: { type: Date, default: null },
 });
 const Space = mongoose.model("Space", spaceSchema);
 
-// Sub-list schema
+// Sub-list item schema
 const subListItemSchema = new mongoose.Schema({
   text: String,
   completed: Boolean,
@@ -56,26 +60,33 @@ const subListItemSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Sub-list schema, allowing nesting
 const subListSchema = new mongoose.Schema({
-  taskId: { type: mongoose.Schema.Types.ObjectId, ref: "Task", required: true },
+  // A sub-list can belong to either a task or another sub-list (or both).
+  taskId: { type: mongoose.Schema.Types.ObjectId, ref: "Task", default: null },
+  parentSubListId: { type: mongoose.Schema.Types.ObjectId, ref: "SubList", default: null },
+
   name: { type: String, default: "New List" },
   items: [subListItemSchema],
 });
 const SubList = mongoose.model("SubList", subListSchema);
 
+// ====== ROUTES ======
 
-
-// Routes for tasks, spaces, sub-lists, etc. omitted for brevity
-// Routes
+// Root
 app.get("/", (req, res) => {
   res.send("Welcome to the My To-Do App API!");
 });
 
-// GET tasks
+// -------- TASKS --------
+
+// GET /tasks?spaceId=ALL|DELETED|<spaceId>
 app.get("/tasks", async (req, res) => {
   try {
     const { spaceId } = req.query;
+
     if (spaceId === "DELETED") {
+      // Show tasks soft-deleted within last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const tasks = await Task.find({
@@ -95,7 +106,7 @@ app.get("/tasks", async (req, res) => {
   }
 });
 
-
+// GET /tasks/:id (fetch single task for sub-lists page)
 app.get("/tasks/:id", async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -108,7 +119,7 @@ app.get("/tasks/:id", async (req, res) => {
   }
 });
 
-// POST tasks
+// POST /tasks
 app.post("/tasks", async (req, res) => {
   try {
     const taskData = {
@@ -127,7 +138,7 @@ app.post("/tasks", async (req, res) => {
   }
 });
 
-// PUT tasks/:id (edit text, completed, dueDate, priority)
+// PUT /tasks/:id
 app.put("/tasks/:id", async (req, res) => {
   try {
     const updatedData = {
@@ -144,7 +155,7 @@ app.put("/tasks/:id", async (req, res) => {
   }
 });
 
-// DELETE tasks/:id (soft-delete)
+// DELETE /tasks/:id (soft-delete)
 app.delete("/tasks/:id", async (req, res) => {
   try {
     const task = await Task.findByIdAndUpdate(
@@ -159,7 +170,7 @@ app.delete("/tasks/:id", async (req, res) => {
   }
 });
 
-// Restore tasks
+// PUT /tasks/:id/restore
 app.put("/tasks/:id/restore", async (req, res) => {
   try {
     const task = await Task.findByIdAndUpdate(
@@ -174,9 +185,12 @@ app.put("/tasks/:id/restore", async (req, res) => {
   }
 });
 
-// Spaces
+// -------- SPACES --------
+
+// GET /spaces
 app.get("/spaces", async (req, res) => {
   try {
+    // If you wanted to hide deleted spaces, you'd filter here
     const spaces = await Space.find();
     res.json(spaces);
   } catch (err) {
@@ -184,6 +198,7 @@ app.get("/spaces", async (req, res) => {
   }
 });
 
+// POST /spaces
 app.post("/spaces", async (req, res) => {
   try {
     const space = new Space({ name: req.body.name });
@@ -194,6 +209,7 @@ app.post("/spaces", async (req, res) => {
   }
 });
 
+// DELETE /spaces/:id
 app.delete("/spaces/:id", async (req, res) => {
   try {
     await Space.findByIdAndDelete(req.params.id);
@@ -205,27 +221,39 @@ app.delete("/spaces/:id", async (req, res) => {
   }
 });
 
-// Sub-lists
+// -------- SUB-LISTS --------
+
+// GET /sublists?taskId=xxx or parentSubListId=xxx
 app.get("/sublists", async (req, res) => {
   try {
-    const { taskId } = req.query;
-    if (!taskId) {
-      return res.status(400).json({ message: "taskId is required" });
+    const { taskId, parentSubListId } = req.query;
+    if (!taskId && !parentSubListId) {
+      return res.status(400).json({ message: "Need taskId or parentSubListId" });
     }
-    const subLists = await SubList.find({ taskId });
+
+    let filter = {};
+    if (taskId) filter.taskId = taskId;
+    if (parentSubListId) filter.parentSubListId = parentSubListId;
+
+    const subLists = await SubList.find(filter);
     res.json(subLists);
   } catch (err) {
     res.status(500).json({ message: "Error fetching sub-lists", error: err });
   }
 });
 
+// POST /sublists
 app.post("/sublists", async (req, res) => {
   try {
-    const { taskId, name } = req.body;
-    if (!taskId) {
-      return res.status(400).json({ message: "taskId is required" });
+    const { taskId, parentSubListId, name } = req.body;
+    if (!taskId && !parentSubListId) {
+      return res.status(400).json({ message: "Must provide taskId or parentSubListId" });
     }
-    const subList = new SubList({ taskId, name: name || "New List" });
+    const subList = new SubList({
+      taskId: taskId || null,
+      parentSubListId: parentSubListId || null,
+      name: name || "New List",
+    });
     await subList.save();
     res.status(201).json(subList);
   } catch (err) {
@@ -233,8 +261,7 @@ app.post("/sublists", async (req, res) => {
   }
 });
 
-
-
+// GET /sublists/:id
 app.get("/sublists/:id", async (req, res) => {
   try {
     const subList = await SubList.findById(req.params.id);
@@ -245,7 +272,7 @@ app.get("/sublists/:id", async (req, res) => {
   }
 });
 
-// In index.js (backend)
+// DELETE /sublists/:id
 app.delete("/sublists/:id", async (req, res) => {
   try {
     const subList = await SubList.findByIdAndDelete(req.params.id);
@@ -258,6 +285,7 @@ app.delete("/sublists/:id", async (req, res) => {
   }
 });
 
+// POST /sublists/:id/items
 app.post("/sublists/:id/items", async (req, res) => {
   try {
     const subList = await SubList.findById(req.params.id);
@@ -276,6 +304,7 @@ app.post("/sublists/:id/items", async (req, res) => {
   }
 });
 
+// PUT /sublists/:id/items/:itemId
 app.put("/sublists/:id/items/:itemId", async (req, res) => {
   try {
     const subList = await SubList.findById(req.params.id);
@@ -297,6 +326,7 @@ app.put("/sublists/:id/items/:itemId", async (req, res) => {
   }
 });
 
+// DELETE /sublists/:id/items/:itemId
 app.delete("/sublists/:id/items/:itemId", async (req, res) => {
   try {
     const subList = await SubList.findById(req.params.id);
@@ -310,6 +340,20 @@ app.delete("/sublists/:id/items/:itemId", async (req, res) => {
     res.json(subList);
   } catch (err) {
     res.status(500).json({ message: "Error deleting sub-list item", error: err });
+  }
+});
+
+// DELETE /sublists/:id/items/completed - remove all completed items
+app.delete("/sublists/:id/items/completed", async (req, res) => {
+  try {
+    const subList = await SubList.findById(req.params.id);
+    if (!subList) return res.status(404).json({ message: "Sub-list not found" });
+
+    subList.items = subList.items.filter((i) => !i.completed);
+    await subList.save();
+    res.json(subList);
+  } catch (err) {
+    res.status(500).json({ message: "Error removing completed items", error: err });
   }
 });
 

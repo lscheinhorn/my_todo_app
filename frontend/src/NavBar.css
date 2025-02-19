@@ -1,0 +1,68 @@
+/* src/NavBar.css */
+
+.nav-bar {
+  display: flex;
+  align-items: center;
+  background-color: #333;
+  padding: 4px;
+  position: relative;
+  color: #fff;
+}
+
+.hamburger-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.nav-menu {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav-menu.show {
+  /* If you want a dropdown style for narrow screens, handle media queries here */
+}
+
+.nav-item {
+  background-color: #2C2C2E;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.nav-item.selected {
+  border: 1px solid #61dafb;
+}
+
+.nav-delete-x {
+  background: none;
+  border: none;
+  color: white;
+  margin-left: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+}
+.nav-delete-x:hover {
+  background-color: #ff0000;
+}
+
+.add-btn,
+.toggle-delete-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.add-btn:hover,
+.toggle-delete-btn:hover {
+  background-color: #444;
+}
