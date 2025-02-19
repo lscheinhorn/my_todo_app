@@ -176,9 +176,16 @@ function SubListsPage() {
 
   // Delete an item
   function deleteItem(itemId) {
+    console.log("Deleting item:", itemId, "from sub-list:", subListId);
+  
     axios
-      .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
-      .then((res) => setItems(res.data.items || []))
+      .delete(`${SUBLISTS_API_URL}/${subListId}/items/${itemId}`)
+      .then((res) => {
+        console.log("Deleted item. Updated sub-list:", res.data);
+        // res.data should be the updated sub-list doc
+        // Update your local state of items
+        setItems(res.data.items || []);
+      })
       .catch((err) => console.error("Error deleting item:", err));
   }
 

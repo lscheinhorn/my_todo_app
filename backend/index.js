@@ -421,8 +421,10 @@ app.delete("/sublists/:id/items/:itemId", async (req, res) => {
     const item = subList.items.id(req.params.itemId);
     if (!item) return res.status(404).json({ message: "Item not found" });
 
-    item.remove();
+    item.remove(); // remove from the array
     await subList.save();
+
+    // Return the updated sub-list
     res.json(subList);
   } catch (err) {
     console.error("❌ Error deleting sub-list item:", err);
