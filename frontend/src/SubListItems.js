@@ -5,10 +5,21 @@ import axios from "axios";
 
 const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
 
+/**
+ * SubListItems:
+ *   - Given subListId, fetch that sub-list doc, show the items array.
+ *   - Let user add new items, delete them, mark them complete, etc.
+ *   - Similar aesthetic to tasks page's sub-lists.
+ */
 function SubListItems({ subListId }) {
   const [subList, setSubList] = useState(null);
+
+  // For expansions
   const [expandedItems, setExpandedItems] = useState({});
+  // For editing items
   const [editingItems, setEditingItems] = useState({});
+
+  // New item form
   const [newItemText, setNewItemText] = useState("");
   const [newItemPriority, setNewItemPriority] = useState("none");
   const [showDueTime, setShowDueTime] = useState(false);
@@ -25,10 +36,12 @@ function SubListItems({ subListId }) {
       .catch((err) => console.error("Error fetching sub-list:", err));
   }
 
-  function reorderItems(items) {
-    return items.slice().sort((a, b) => {
+  // reorder items so that uncompleted appear first
+  function reorderItems(itemsArr) {
+    return itemsArr.slice().sort((a, b) => {
       if (a.completed && !b.completed) return 1;
       if (!a.completed && b.completed) return -1;
+      // If you want to sort by time or priority next, do so.
       return new Date(a.createdAt) - new Date(b.createdAt);
     });
   }
@@ -36,6 +49,7 @@ function SubListItems({ subListId }) {
   function addItem(e) {
     e.preventDefault();
     if (!newItemText.trim()) return;
+
     axios
       .post(`${SUBLISTS_API_URL}/${subListId}/items`, {
         text: newItemText,
@@ -61,28 +75,6 @@ function SubListItems({ subListId }) {
       .catch((err) => console.error("Error toggling item:", err));
   }
 
-  function toggleExpand(itemId) {
-    setExpandedItems((prev) => ({
-      ...prev,
-      [itemId]: !prev[itemId],
-    }));
-  }
-
-  function startEditing(itemId) {
-    setEditingItems((prev) => ({ ...prev, [itemId]: true }));
-  }
-
-  function stopEditing(itemId) {
-    setEditingItems((prev) => ({ ...prev, [itemId]: false }));
-  }
-
-  function saveItemEdit(item, updated) {
-    axios
-      .put(`${SUBLISTS_API_URL}/${subListId}/items/${item._id}`, updated)
-      .then((res) => setSubList(res.data))
-      .catch((err) => console.error("Error saving item edit:", err));
-  }
-
   function deleteItem(itemId) {
     axios
       .delete(`${SUBLISTS_API_URL}/${subListId}/items/${itemId}`)
@@ -90,16 +82,39 @@ function SubListItems({ subListId }) {
       .catch((err) => console.error("Error deleting item:", err));
   }
 
-  if (!subList) return <div>Loading sub-list...</div>;
+  function toggleExpandItem(itemId) {
+    setExpandedItems((prev) => ({
+      ...prev,
+      [itemId]: !prev[itemId],
+    }));
+  }
 
-  const items = reorderItems(subList.items);
+  function startEditingItem(itemId) {
+    setEditingItems((prev) => ({ ...prev, [itemId]: true }));
+  }
+  function stopEditingItem(itemId) {
+    setEditingItems((prev) => ({ ...prev, [itemId]: false }));
+  }
+
+  function saveItemEdits(item, updated) {
+    axios
+      .put(`${SUBLISTS_API_URL}/${subListId}/items/${item._id}`, updated)
+      .then((res) => setSubList(res.data))
+      .catch((err) => console.error("Error saving item edits:", err));
+  }
+
+  if (!subList) {
+    return <div style={{ marginTop: "10px" }}>Loading items...</div>;
+  }
+
+  const items = reorderItems(subList.items || []);
 
   return (
-    <div style={{ marginTop: "20px" }}>
-      <h2>{subList.name}</h2>
+    <div style={{ marginTop: "10px" }}>
+      <h4>{subList.name} - Items</h4>
 
       {/* Add item form */}
-      <form onSubmit={addItem} style={{ marginTop: "10px", marginBottom: "20px" }}>
+      <form onSubmit={addItem} style={{ marginTop: "10px", marginBottom: "10px" }}>
         <input
           type="text"
           placeholder="New item..."
@@ -145,7 +160,6 @@ function SubListItems({ subListId }) {
         <button type="submit">Add</button>
       </form>
 
-      {/* Items */}
       {items.map((item) => {
         const isExpanded = expandedItems[item._id] || false;
         const isEditing = editingItems[item._id] || false;
@@ -155,7 +169,11 @@ function SubListItems({ subListId }) {
         else if (item.priority === "priority") priorityClass = "priority-normal";
 
         return (
-          <div key={item._id} className={`tasks-list-item ${priorityClass}`} style={{ marginBottom: "8px" }}>
+          <div
+            key={item._id}
+            className={`tasks-list-item ${priorityClass}`}
+            style={{ marginBottom: "6px" }}
+          >
             <div style={{ display: "flex", alignItems: "center" }}>
               <input
                 type="checkbox"
@@ -165,20 +183,28 @@ function SubListItems({ subListId }) {
               />
               <div
                 className="task-main-content"
-                onClick={() => { if (!isEditing) toggleExpand(item._id); }}
                 style={{ cursor: "pointer", flex: 1 }}
+                onClick={() => {
+                  if (!isEditing) toggleExpandItem(item._id);
+                }}
               >
                 <div className="collapsed-row">
-                  <div>{item.text}{item.priority !== "none" && ` (${item.priority})`}</div>
-                  <button className="show-more-btn">{isExpanded ? "▲" : "▼"}</button>
+                  <div>
+                    {item.text}
+                    {item.priority !== "none" && ` (${item.priority})`}
+                  </div>
+                  <button className="show-more-btn">
+                    {isExpanded ? "▲" : "▼"}
+                  </button>
                 </div>
               </div>
             </div>
+
             {isExpanded && (
               <div className="expanded-row">
                 {!isEditing ? (
                   <div className="actions-row" style={{ display: "flex", flexWrap: "wrap" }}>
-                    <button onClick={() => startEditing(item._id)}>Edit</button>
+                    <button onClick={() => startEditingItem(item._id)}>Edit</button>
                     <div style={{ marginLeft: "auto" }}>
                       Created: {new Date(item.createdAt).toLocaleString()}
                     </div>
@@ -194,10 +220,10 @@ function SubListItems({ subListId }) {
                   <ItemEditForm
                     item={item}
                     onSave={(updated) => {
-                      saveItemEdit(item, updated);
-                      stopEditing(item._id);
+                      saveItemEdits(item, updated);
+                      stopEditingItem(item._id);
                     }}
-                    onCancel={() => stopEditing(item._id)}
+                    onCancel={() => stopEditingItem(item._id)}
                   />
                 )}
               </div>
@@ -209,6 +235,9 @@ function SubListItems({ subListId }) {
   );
 }
 
+/**
+ * ItemEditForm for sub-list items
+ */
 function ItemEditForm({ item, onSave, onCancel }) {
   const [editText, setEditText] = useState(item.text);
   const [editPriority, setEditPriority] = useState(item.priority || "none");
