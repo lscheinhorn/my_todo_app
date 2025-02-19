@@ -95,6 +95,19 @@ app.get("/tasks", async (req, res) => {
   }
 });
 
+
+app.get("/tasks/:id", async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching task", error: err });
+  }
+});
+
 // POST tasks
 app.post("/tasks", async (req, res) => {
   try {
@@ -220,6 +233,8 @@ app.post("/sublists", async (req, res) => {
   }
 });
 
+
+
 app.get("/sublists/:id", async (req, res) => {
   try {
     const subList = await SubList.findById(req.params.id);
@@ -227,6 +242,19 @@ app.get("/sublists/:id", async (req, res) => {
     res.json(subList);
   } catch (err) {
     res.status(500).json({ message: "Error fetching sub-list", error: err });
+  }
+});
+
+// In index.js (backend)
+app.delete("/sublists/:id", async (req, res) => {
+  try {
+    const subList = await SubList.findByIdAndDelete(req.params.id);
+    if (!subList) {
+      return res.status(404).json({ message: "Sub-list not found" });
+    }
+    res.json({ message: "Sub-list deleted", subList });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting sub-list", error: err });
   }
 });
 
