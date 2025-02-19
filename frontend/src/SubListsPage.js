@@ -176,10 +176,10 @@ function SubListsPage() {
 
   // Delete an item
   function deleteItem(itemId) {
-    console.log("Deleting item:", itemId, "from sub-list:", subListId);
-  
+    console.log("Deleting item:", itemId, "from sub-list:", selectedSubListId);
+    
     axios
-      .delete(`${SUBLISTS_API_URL}/${subListId}/items/${itemId}`)
+      .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
       .then((res) => {
         console.log("Deleted item. Updated sub-list:", res.data);
         // res.data should be the updated sub-list doc
