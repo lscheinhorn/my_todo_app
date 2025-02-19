@@ -1,60 +1,80 @@
-// src/SubListsPage.js
+// SubListsPage.js
 
 import React, { useState, useEffect } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./App.css";
-import SubListItems from "./SubListItems";
 
-// Point this to your actual backend domain
+/**
+ * Adjust these to your actual backend domain:
+ * e.g. "https://my-todo-app-mujx.onrender.com"
+ */
 const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
-// For fetching the parent task’s title
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 
 /**
  * SubListsPage:
- *   - Similar to TasksPage, but for sub-lists belonging to a parent task (taskId).
- *   - We can add new sub-lists, edit them, delete them, mark them complete, etc.
- *   - We also do "bulk edit" expansions and sorting by dueDate, priority, or createdAt.
- *   - Inside each sub-list, we show SubListItems, which is analogous to "sub-lists" in tasks.
+ * - At the top: A "Sub-lists" selector (like "Spaces"), letting you add or delete sub-lists for the current task.
+ * - Then, once a sub-list is selected, shows an "Items" area that behaves like "Tasks" but for "items":
+ *   - New item form with text, optional dueTime, priority, etc.
+ *   - Sort & bulk edit expansions for items
+ *   - Items grouped by time if sortBy = "dueTime"
+ *   - Mark items complete, delete them, edit them
  */
 function SubListsPage() {
-  // We get the parent task ID from the URL, e.g. /sublist/:taskId
+  // The parent "taskId" from the URL param, e.g. /sublist/:taskId
   const { taskId } = useParams();
   const navigate = useNavigate();
 
-  // For optional query parameters, if you want them:
-  const [searchParams] = useSearchParams();
-
-  // We fetch the parent task’s name for the heading
+  // We'll fetch the parent task's name to display at the top
   const [taskName, setTaskName] = useState(null);
   const [taskError, setTaskError] = useState(false);
 
-  // Sub-lists array
+  // 1) Sub-lists array, just like "spaces"
   const [subLists, setSubLists] = useState([]);
+  // Which sub-list is currently selected
+  const [selectedSubListId, setSelectedSubListId] = useState(null);
 
-  // Sorting: "dueDate", "priority", "createdAt"
-  const [sortBy, setSortBy] = useState("dueDate");
+  // "New sub-list" form
+  const [newSubListName, setNewSubListName] = useState("");
+  const [showAddSubList, setShowAddSubList] = useState(false);
+  // For toggling "delete mode" on sub-lists
+  const [deleteMode, setDeleteMode] = useState(false);
 
-  // For expansions
-  const [expandedSubLists, setExpandedSubLists] = useState({});
-  // For "bulk edit" expansions
+  // 2) Items area (like "tasks")
+  const [items, setItems] = useState([]);
+  // Sorting by "dueTime", "priority", or "createdAt"
+  const [sortBy, setSortBy] = useState("dueTime");
+  // Bulk edit expansions
   const [bulkEdit, setBulkEdit] = useState(false);
+  // Which items are expanded
+  const [expandedItems, setExpandedItems] = useState({});
+  // Which items are in "edit" mode
+  const [editingItems, setEditingItems] = useState({});
 
-  // For editing sub-lists (like editing tasks)
-  const [editingSubLists, setEditingSubLists] = useState({});
+  // "New item" form
+  const [newItemText, setNewItemText] = useState("");
+  const [newItemPriority, setNewItemPriority] = useState("none");
+  const [showDueTime, setShowDueTime] = useState(false);
+  const [newItemDueTime, setNewItemDueTime] = useState("");
 
-  // New sub-list form
-  const [newSubListText, setNewSubListText] = useState("");
-  const [newSubListPriority, setNewSubListPriority] = useState("none");
-  const [showNewSubListDueDate, setShowNewSubListDueDate] = useState(false);
-  const [newSubListDueDate, setNewSubListDueDate] = useState("");
-
-  // On mount (and whenever taskId changes), fetch the parent task name and sub-lists
+  // ======= FETCH THE PARENT TASK NAME & SUB-LISTS ON MOUNT =======
   useEffect(() => {
     fetchParentTask();
     fetchSubLists();
+    // Reset the selected sub-list & items
+    setSelectedSubListId(null);
+    setItems([]);
   }, [taskId]);
+
+  // If the user picks a different sub-list, fetch that sub-list's items
+  useEffect(() => {
+    if (selectedSubListId) {
+      fetchItems(selectedSubListId);
+    } else {
+      setItems([]);
+    }
+  }, [selectedSubListId]);
 
   function fetchParentTask() {
     axios
@@ -79,199 +99,249 @@ function SubListsPage() {
   // Add a new sub-list
   function addSubList(e) {
     e.preventDefault();
-    if (!newSubListText.trim()) return;
-
-    const dueDateToSend = showNewSubListDueDate ? newSubListDueDate : null;
-
-    const subListData = {
-      taskId,
-      name: newSubListText, // parallel to "text"
-      completed: false,     // if your schema has it
-      priority: newSubListPriority,
-      dueDate: dueDateToSend, // if your schema includes dueDate
-    };
-
+    if (!newSubListName.trim()) {
+      setShowAddSubList(false);
+      return;
+    }
     axios
-      .post(SUBLISTS_API_URL, subListData)
+      .post(SUBLISTS_API_URL, { taskId, name: newSubListName })
       .then(() => {
-        setNewSubListText("");
-        setNewSubListPriority("none");
-        setShowNewSubListDueDate(false);
-        setNewSubListDueDate("");
+        setNewSubListName("");
+        setShowAddSubList(false);
         fetchSubLists();
       })
-      .catch((err) => console.error("Error adding sub-list:", err));
-  }
-
-  // Mark a sub-list as complete (if your schema has a "completed" field)
-  function markComplete(subList) {
-    axios
-      .put(`${SUBLISTS_API_URL}/${subList._id}`, {
-        ...subList,
-        completed: !subList.completed,
-      })
-      .then(() => fetchSubLists())
-      .catch((err) => console.error("Error toggling sub-list complete:", err));
+      .catch((err) => console.error("Error creating sub-list:", err));
   }
 
   // Delete a sub-list
-  function deleteSubList(id) {
+  function handleDeleteSubList(e, subListId) {
+    e.stopPropagation();
     axios
-      .delete(`${SUBLISTS_API_URL}/${id}`)
-      .then(() => fetchSubLists())
+      .delete(`${SUBLISTS_API_URL}/${subListId}`)
+      .then(() => {
+        // if we were viewing that sub-list, reset
+        if (subListId === selectedSubListId) {
+          setSelectedSubListId(null);
+          setItems([]);
+        }
+        fetchSubLists();
+      })
       .catch((err) => console.error("Error deleting sub-list:", err));
   }
 
-  // Expand/collapse a single sub-list
-  function toggleExpandSubList(id) {
+  // ========== ITEMS AREA (like tasks) ==========
+  function fetchItems(subListId) {
+    axios
+      .get(`${SUBLISTS_API_URL}/${subListId}`)
+      .then((res) => {
+        // subList doc includes items array
+        setItems(res.data.items || []);
+      })
+      .catch((err) => console.error("Error fetching items:", err));
+  }
+
+  // Add a new item
+  function addItem(e) {
+    e.preventDefault();
+    if (!newItemText.trim() || !selectedSubListId) return;
+
+    const data = {
+      text: newItemText,
+      priority: newItemPriority,
+      dueTime: showDueTime ? newItemDueTime : "",
+    };
+    axios
+      .post(`${SUBLISTS_API_URL}/${selectedSubListId}/items`, data)
+      .then((res) => {
+        setItems(res.data.items || []);
+        setNewItemText("");
+        setNewItemPriority("none");
+        setShowDueTime(false);
+        setNewItemDueTime("");
+      })
+      .catch((err) => console.error("Error adding item:", err));
+  }
+
+  // Mark item complete
+  function markComplete(item) {
+    axios
+      .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${item._id}`, {
+        completed: !item.completed,
+      })
+      .then((res) => {
+        setItems(res.data.items || []);
+      })
+      .catch((err) => console.error("Error toggling item complete:", err));
+  }
+
+  // Delete an item
+  function deleteItem(itemId) {
+    axios
+      .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
+      .then((res) => setItems(res.data.items || []))
+      .catch((err) => console.error("Error deleting item:", err));
+  }
+
+  // Expand an item
+  function toggleExpandItem(itemId) {
     if (!bulkEdit) {
-      // auto-collapse others
-      setExpandedSubLists((prev) => {
-        const was = !!prev[id];
+      setExpandedItems((prev) => {
+        const was = !!prev[itemId];
         const newState = {};
-        if (!was) newState[id] = true;
+        if (!was) newState[itemId] = true;
         return newState;
       });
     } else {
-      // in bulk edit => multiple expansions
-      setExpandedSubLists((prev) => ({
+      setExpandedItems((prev) => ({
         ...prev,
-        [id]: !prev[id],
+        [itemId]: !prev[itemId],
       }));
     }
   }
 
-  // For editing a sub-list
-  function startEditingSubList(id) {
-    setEditingSubLists((prev) => ({ ...prev, [id]: true }));
-  }
-  function stopEditingSubList(id) {
-    setEditingSubLists((prev) => ({ ...prev, [id]: false }));
+  // Start editing an item
+  function startEditingItem(itemId) {
+    setEditingItems((prev) => ({ ...prev, [itemId]: true }));
   }
 
-  function saveSubListEdits(id, updatedFields) {
-    const subList = subLists.find((s) => s._id === id);
-    if (!subList) return;
+  // Stop editing an item
+  function stopEditingItem(itemId) {
+    setEditingItems((prev) => ({ ...prev, [itemId]: false }));
+  }
 
+  // Save item edits
+  function saveItemEdits(item, updatedFields) {
     axios
-      .put(`${SUBLISTS_API_URL}/${id}`, { ...subList, ...updatedFields })
-      .then(() => {
-        stopEditingSubList(id);
-        setExpandedSubLists((prev) => ({ ...prev, [id]: false }));
-        fetchSubLists();
+      .put(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${item._id}`, updatedFields)
+      .then((res) => {
+        setItems(res.data.items || []);
+        stopEditingItem(item._id);
+        setExpandedItems((prev) => ({ ...prev, [item._id]: false }));
       })
-      .catch((err) => console.error("Error saving sub-list edits:", err));
+      .catch((err) => console.error("Error saving item edits:", err));
   }
 
-  // Bulk edit toggles expansions
+  // Bulk edit expansions for items
   function toggleBulkEdit() {
     const nextVal = !bulkEdit;
     setBulkEdit(nextVal);
     if (nextVal) {
+      // expand all
       const expandMap = {};
-      subLists.forEach((s) => (expandMap[s._id] = true));
-      setExpandedSubLists(expandMap);
+      items.forEach((i) => (expandMap[i._id] = true));
+      setExpandedItems(expandMap);
     } else {
-      setExpandedSubLists({});
+      setExpandedItems({});
     }
   }
 
-  // Sorting sub-lists: by "dueDate", "priority", "createdAt"
-  function getSortedSubLists() {
-    const sorted = [...subLists];
+  // Sorting & grouping items by dueTime, priority, or createdAt
+  function getSortedItems() {
+    const sorted = [...items];
     sorted.sort((a, b) => {
-      // If you want to treat subList as having "completed" or "deletedAt," do that here.
-      // We'll do "completed last" for consistency:
+      // completed last
       if (a.completed && !b.completed) return 1;
       if (!a.completed && b.completed) return -1;
 
-      // If you store "dueDate" in the sub-list doc, parse it:
-      const aDue = a.dueDate ? new Date(a.dueDate) : null;
-      const bDue = b.dueDate ? new Date(b.dueDate) : null;
       const priorityRank = { high: 2, priority: 1, none: 0 };
       const aPrio = priorityRank[a.priority] || 0;
       const bPrio = priorityRank[b.priority] || 0;
       const aCreated = new Date(a.createdAt);
       const bCreated = new Date(b.createdAt);
 
-      if (sortBy === "dueDate") {
-        if (!aDue && bDue) return 1;
-        if (aDue && !bDue) return -1;
-        if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
-          return aDue - bDue;
+      if (sortBy === "dueTime") {
+        // parse "HH:MM" to compare times
+        const parseTime = (t) => {
+          if (!t) return null;
+          const match = t.match(/(\d{1,2}):(\d{2})/);
+          if (!match) return null;
+          const hh = parseInt(match[1], 10);
+          const mm = parseInt(match[2], 10);
+          return hh * 60 + mm;
+        };
+        const aTime = parseTime(a.dueTime);
+        const bTime = parseTime(b.dueTime);
+        if (aTime == null && bTime != null) return 1;
+        if (aTime != null && bTime == null) return -1;
+        if (aTime != null && bTime != null && aTime !== bTime) {
+          return aTime - bTime;
         }
         // then priority
         if (aPrio !== bPrio) return bPrio - aPrio;
-        // then created
+        // then createdAt
         return aCreated - bCreated;
       } else if (sortBy === "priority") {
+        // priority first
         if (aPrio !== bPrio) return bPrio - aPrio;
-        // then due date
-        if (!aDue && bDue) return 1;
-        if (aDue && !bDue) return -1;
-        if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
-          return aDue - bDue;
+        // then dueTime
+        const parseTime = (t) => {
+          if (!t) return null;
+          const match = t.match(/(\d{1,2}):(\d{2})/);
+          if (!match) return null;
+          const hh = parseInt(match[1], 10);
+          const mm = parseInt(match[2], 10);
+          return hh * 60 + mm;
+        };
+        const aTime = parseTime(a.dueTime);
+        const bTime = parseTime(b.dueTime);
+        if (aTime == null && bTime != null) return 1;
+        if (aTime != null && bTime == null) return -1;
+        if (aTime != null && bTime != null && aTime !== bTime) {
+          return aTime - bTime;
         }
-        // then created
+        // then createdAt
         return aCreated - bCreated;
       } else {
-        // sortBy = "createdAt"
+        // sortBy === "createdAt"
         return aCreated - bCreated;
       }
     });
     return sorted;
   }
 
-  // Optionally group by dueDate. If you want the same approach as tasks, do:
-  function groupByDueDate(sortedSubLists) {
-    if (sortBy !== "dueDate") {
-      return [{ dateLabel: null, subLists: sortedSubLists }];
+  // Group items by time if sortBy=dueTime
+  function groupItemsByTime(sortedItems) {
+    if (sortBy !== "dueTime") {
+      return [{ timeLabel: null, items: sortedItems }];
     }
+    // We'll group by "Due by HH:MM" or "No Due Time"
     const groups = {};
-    sortedSubLists.forEach((s) => {
-      if (!s.dueDate) {
-        const key = "No Due Date";
+    sortedItems.forEach((item) => {
+      if (!item.dueTime) {
+        const key = "No Due Time";
         if (!groups[key]) groups[key] = [];
-        groups[key].push(s);
+        groups[key].push(item);
       } else {
-        const dayKey = new Date(s.dueDate).toISOString().split("T")[0];
-        if (!groups[dayKey]) groups[dayKey] = [];
-        groups[dayKey].push(s);
+        const key = `Due by ${item.dueTime}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
       }
     });
-
-    const sortedKeys = Object.keys(groups).sort((a, b) => {
-      if (a === "No Due Date") return 1;
-      if (b === "No Due Date") return -1;
-      return a.localeCompare(b);
-    });
-
-    return sortedKeys.map((key) => {
-      let dateLabel;
-      if (key === "No Due Date") {
-        dateLabel = "No Due Date";
-      } else {
-        const dateObj = new Date(`${key}T00:00:00`);
-        dateLabel = dateObj.toLocaleDateString(undefined, {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      }
-      return { dateLabel, subLists: groups[key] };
-    });
+    // sort the keys by time
+    const parseTime = (str) => {
+      if (str === "No Due Time") return 99999;
+      const match = str.match(/(\d{1,2}):(\d{2})$/);
+      if (!match) return 99999;
+      const hh = parseInt(match[1], 10);
+      const mm = parseInt(match[2], 10);
+      return hh * 60 + mm;
+    };
+    const sortedKeys = Object.keys(groups).sort((a, b) => parseTime(a) - parseTime(b));
+    return sortedKeys.map((key) => ({ timeLabel: key, items: groups[key] }));
   }
 
-  const sorted = getSortedSubLists();
-  const groupedSubLists = groupByDueDate(sorted);
+  // =========== RENDER ===========
 
   function handleBack() {
     navigate("/");
   }
 
+  const sortedItems = getSortedItems();
+  const groupedItems = groupItemsByTime(sortedItems);
+
   return (
     <div className="app-container" style={{ position: "relative" }}>
+      {/* Top left "back to tasks" */}
       <button
         onClick={handleBack}
         style={{
@@ -289,228 +359,256 @@ function SubListsPage() {
         ← Return to Tasks
       </button>
 
+      {/* Show the parent task name */}
       {taskError ? (
         <h1>Error loading parent task</h1>
       ) : taskName === null ? (
         <h1>Loading parent task...</h1>
       ) : (
-        <h1>Sub-Lists for Task: {taskName}</h1>
+        <h1>Sub-lists for Task: {taskName}</h1>
       )}
 
-      {/* New sub-list form, same style as tasks page */}
-      <form className="new-task-form" onSubmit={addSubList}>
-        <div className="form-row">
-          <input
-            type="text"
-            placeholder="New sub-list..."
-            value={newSubListText}
-            onChange={(e) => setNewSubListText(e.target.value)}
-          />
-          <select
-            value={newSubListPriority}
-            onChange={(e) => setNewSubListPriority(e.target.value)}
-          >
-            <option value="none">No Priority</option>
-            <option value="priority">Priority</option>
-            <option value="high">High Priority</option>
-          </select>
-        </div>
-
-        {!showNewSubListDueDate ? (
-          <button
-            type="button"
+      {/* SUB-LISTS SELECTOR (like Spaces) */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "20px" }}>
+        {/* Render sub-lists row */}
+        {subLists.map((sl) => (
+          <div
+            key={sl._id}
             onClick={() => {
-              setShowNewSubListDueDate(true);
-              setNewSubListDueDate(new Date().toISOString().split("T")[0]);
+              setSelectedSubListId(sl._id);
+              setBulkEdit(false);
+              setExpandedItems({});
+              setEditingItems({});
+            }}
+            style={{
+              padding: "6px 12px",
+              backgroundColor: "#2C2C2E",
+              borderRadius: "4px",
+              cursor: "pointer",
+              border: sl._id === selectedSubListId ? "1px solid #61dafb" : "1px solid transparent",
             }}
           >
-            Set due date
-          </button>
-        ) : (
-          <>
+            {sl.name}
+            {/* If in delete mode, show X to delete sub-list */}
+            {deleteMode && (
+              <button
+                onClick={(e) => handleDeleteSubList(e, sl._id)}
+                style={{ marginLeft: "8px", background: "none", border: "none", color: "#fff", cursor: "pointer" }}
+              >
+                X
+              </button>
+            )}
+          </div>
+        ))}
+
+        {/* "Add sub-list" button */}
+        {showAddSubList ? (
+          <form onSubmit={addSubList} style={{ display: "flex", gap: "6px" }}>
             <input
-              type="date"
-              value={newSubListDueDate}
-              onChange={(e) => setNewSubListDueDate(e.target.value)}
+              type="text"
+              placeholder="New sub-list..."
+              value={newSubListName}
+              onChange={(e) => setNewSubListName(e.target.value)}
             />
-            <button
-              type="button"
-              onClick={() => {
-                setShowNewSubListDueDate(false);
-                setNewSubListDueDate("");
-              }}
-            >
-              Remove due date
+            <button type="submit">OK</button>
+            <button type="button" onClick={() => setShowAddSubList(false)}>
+              Cancel
             </button>
-          </>
+          </form>
+        ) : (
+          <button onClick={() => setShowAddSubList(true)}>Add List</button>
         )}
 
-        <button type="submit">Add</button>
-      </form>
-
-      {/* Sort & Bulk Edit */}
-      <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
-        <div className="sort-row">
-          <label htmlFor="sortBy">Sort By:</label>
-          <select
-            id="sortBy"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="dueDate">Due Date</option>
-            <option value="priority">Priority</option>
-            <option value="createdAt">Date Created</option>
-          </select>
-        </div>
-
-        <button onClick={toggleBulkEdit}>
-          {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
+        {/* Toggle "delete mode" */}
+        <button onClick={() => setDeleteMode(!deleteMode)}>
+          {deleteMode ? "Stop Deleting" : "Delete Lists"}
         </button>
       </div>
 
-      {/* Sub-lists grouped by date if sortBy=dueDate */}
-      {groupedSubLists.map((group) => (
-        <div key={group.dateLabel || "no-date"} className="date-group">
-          {group.dateLabel && (
-            <h2 className="date-group-label">{group.dateLabel}</h2>
-          )}
-          <ul className="tasks-list">
-            {group.subLists.map((sub) => {
-              const isExpanded = expandedSubLists[sub._id] || false;
-              const isEditing = editingSubLists[sub._id] || false;
+      {/* If a sub-list is selected, show the "items" area (like tasks) */}
+      {selectedSubListId && (
+        <>
+          {/* New item form, same style as tasks */}
+          <form className="new-task-form" onSubmit={addItem}>
+            <div className="form-row">
+              <input
+                type="text"
+                placeholder="New item..."
+                value={newItemText}
+                onChange={(e) => setNewItemText(e.target.value)}
+              />
+              <select
+                value={newItemPriority}
+                onChange={(e) => setNewItemPriority(e.target.value)}
+              >
+                <option value="none">No Priority</option>
+                <option value="priority">Priority</option>
+                <option value="high">High Priority</option>
+              </select>
+            </div>
 
-              // If your sub-list doc has "completed," "priority," "dueDate," etc., we do parallels:
-              let priorityClass = "";
-              if (sub.priority === "high") priorityClass = "priority-high";
-              else if (sub.priority === "priority") priorityClass = "priority-normal";
-
-              return (
-                <li
-                  key={sub._id}
-                  className={`tasks-list-item ${priorityClass}`}
-                  tabIndex={-1}
+            {!showDueTime ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDueTime(true);
+                  setNewItemDueTime("12:00");
+                }}
+              >
+                Set due time
+              </button>
+            ) : (
+              <>
+                <input
+                  type="time"
+                  value={newItemDueTime}
+                  onChange={(e) => setNewItemDueTime(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDueTime(false);
+                    setNewItemDueTime("");
+                  }}
                 >
-                  {/* Inline checkbox with the sub-list name */}
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      className="mark-complete-checkbox"
-                      checked={!!sub.completed}
-                      onChange={() => markComplete(sub)}
-                      aria-label={`Mark sub-list ${sub.name} as complete`}
-                    />
-                    <div
-                      className="task-main-content"
-                      onClick={() => {
-                        if (!isEditing) toggleExpandSubList(sub._id);
-                      }}
-                      aria-expanded={isExpanded}
-                      style={{ cursor: "pointer" }}
+                  Remove time
+                </button>
+              </>
+            )}
+
+            <button type="submit">Add</button>
+          </form>
+
+          {/* Sort & Bulk Edit for items */}
+          <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
+            <div className="sort-row">
+              <label htmlFor="sortBy">Sort By:</label>
+              <select
+                id="sortBy"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="dueTime">Due Time</option>
+                <option value="priority">Priority</option>
+                <option value="createdAt">Date Created</option>
+              </select>
+            </div>
+
+            <button onClick={toggleBulkEdit}>
+              {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
+            </button>
+          </div>
+
+          {/* Grouped items by time if sortBy=dueTime */}
+          {groupedItems.map((group) => (
+            <div key={group.timeLabel || "no-time"} style={{ marginBottom: "20px" }}>
+              {group.timeLabel && (
+                <h3 className="date-group-label">{group.timeLabel}</h3>
+              )}
+              <ul className="tasks-list">
+                {group.items.map((item) => {
+                  const isExpanded = expandedItems[item._id] || false;
+                  const isEditing = editingItems[item._id] || false;
+
+                  let priorityClass = "";
+                  if (item.priority === "high") priorityClass = "priority-high";
+                  else if (item.priority === "priority") priorityClass = "priority-normal";
+
+                  return (
+                    <li
+                      key={item._id}
+                      className={`tasks-list-item ${priorityClass}`}
+                      tabIndex={-1}
                     >
-                      <div className="collapsed-row">
-                        <div className="text-with-priority">
-                          {sub.name}
-                          {sub.priority !== "none" && ` (${sub.priority})`}
-                        </div>
-                        <button className="show-more-btn">
-                          {isExpanded ? "▲" : "▼"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expanded row */}
-                  {isExpanded && (
-                    <div className="expanded-row">
-                      {!isEditing ? (
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <input
+                          type="checkbox"
+                          className="mark-complete-checkbox"
+                          checked={!!item.completed}
+                          onChange={() => markComplete(item)}
+                          aria-label={`Mark ${item.text} as complete`}
+                        />
                         <div
-                          className="actions-row"
-                          style={{ display: "flex", flexWrap: "wrap", alignItems: "center" }}
+                          className="task-main-content"
+                          style={{ cursor: "pointer", flex: 1 }}
+                          onClick={() => {
+                            if (!isEditing) toggleExpandItem(item._id);
+                          }}
                         >
-                          <button onClick={() => startEditingSubList(sub._id)}>
-                            Edit
-                          </button>
-
-                          {/* Show sub-list items here, if your doc has items array */}
-                          <SubListItems subListId={sub._id} />
-
-                          {/* Created date (if you store createdAt) */}
-                          {sub.createdAt && (
-                            <div className="task-created-date">
-                              Created:{" "}
-                              {new Date(sub.createdAt).toLocaleString(undefined, {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                          <div className="collapsed-row">
+                            <div>
+                              {item.text}
+                              {item.priority !== "none" && ` (${item.priority})`}
                             </div>
-                          )}
-
-                          {/* Trash can on far right */}
-                          <button
-                            className="delete-btn"
-                            style={{ marginLeft: "auto" }}
-                            onClick={() => deleteSubList(sub._id)}
-                            aria-label="Delete sub-list"
-                          >
-                            🗑
-                          </button>
+                            <button className="show-more-btn">
+                              {isExpanded ? "▲" : "▼"}
+                            </button>
+                          </div>
                         </div>
-                      ) : (
-                        <>
-                          <SubListEditForm
-                            subList={sub}
-                            onSave={(updatedFields) => saveSubListEdits(sub._id, updatedFields)}
-                            onCancel={() => stopEditingSubList(sub._id)}
-                          />
-                          {sub.createdAt && (
+                      </div>
+
+                      {isExpanded && (
+                        <div className="expanded-row">
+                          {!isEditing ? (
                             <div
-                              className="task-created-date"
-                              style={{ textAlign: "right" }}
+                              className="actions-row"
+                              style={{ display: "flex", flexWrap: "wrap", alignItems: "center" }}
                             >
-                              Created:{" "}
-                              {new Date(sub.createdAt).toLocaleString(undefined, {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              <button onClick={() => startEditingItem(item._id)}>Edit</button>
+
+                              <div className="task-created-date" style={{ marginLeft: "auto" }}>
+                                Created:{" "}
+                                {new Date(item.createdAt).toLocaleString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+
+                              <button
+                                className="delete-btn"
+                                style={{ marginLeft: "auto" }}
+                                onClick={() => deleteItem(item._id)}
+                              >
+                                🗑
+                              </button>
                             </div>
+                          ) : (
+                            <ItemEditForm
+                              item={item}
+                              onSave={(updated) => saveItemEdits(item, updated)}
+                              onCancel={() => stopEditingItem(item._id)}
+                            />
                           )}
-                        </>
+                        </div>
                       )}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
 
-/**
- * SubListEditForm - parallels TaskEditForm
- */
-function SubListEditForm({ subList, onSave, onCancel }) {
-  const [editName, setEditName] = useState(subList.name);
-  const [editPriority, setEditPriority] = useState(subList.priority || "none");
-  const [editDueDate, setEditDueDate] = useState(
-    subList.dueDate ? subList.dueDate.substring(0, 10) : ""
-  );
-  const [editCompleted, setEditCompleted] = useState(!!subList.completed);
+/** Edit form for an item, parallel to the tasks "edit" form. */
+function ItemEditForm({ item, onSave, onCancel }) {
+  const [editText, setEditText] = useState(item.text);
+  const [editPriority, setEditPriority] = useState(item.priority || "none");
+  const [editDueTime, setEditDueTime] = useState(item.dueTime || "");
+  const [editCompleted, setEditCompleted] = useState(!!item.completed);
 
   function handleSubmit(e) {
     e.preventDefault();
     onSave({
-      name: editName,
+      text: editText,
       priority: editPriority,
-      dueDate: editDueDate ? new Date(editDueDate) : null,
+      dueTime: editDueTime,
       completed: editCompleted,
     });
   }
@@ -520,8 +618,8 @@ function SubListEditForm({ subList, onSave, onCancel }) {
       <div className="edit-form-row">
         <input
           type="text"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
         />
         <select
           value={editPriority}
@@ -542,9 +640,9 @@ function SubListEditForm({ subList, onSave, onCancel }) {
           Completed
         </label>
         <input
-          type="date"
-          value={editDueDate}
-          onChange={(e) => setEditDueDate(e.target.value)}
+          type="time"
+          value={editDueTime}
+          onChange={(e) => setEditDueTime(e.target.value)}
         />
       </div>
       <div className="edit-form-row">
