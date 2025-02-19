@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const SPACES_API_URL = "https://my-todo-app-frontend-catn.onrender.com/spaces";
+const SPACES_API_URL = "https://my-todo-app-mujx.onrender.com/spaces";
 
 function Spaces({ onSpaceSelect, selectedSpaceId }) {
   const [spaces, setSpaces] = useState([]);
