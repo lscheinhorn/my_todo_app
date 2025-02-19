@@ -1,10 +1,10 @@
-// src/TasksPage.js
+// TasksPage.js
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
-import SpacesNavBar from "./SpacesNavBar";
-import SubListsDropdown from "./SubListsDropdown";
+import SpacesNavBar from "./SpacesNavBar"; // If you still use a spaces nav bar
+import SubListsDropdown from "./SubListsDropdown"; // If you still have sub-lists inside tasks
 
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 
@@ -13,16 +13,12 @@ function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [sortBy, setSortBy] = useState("dueDate");
 
-  // expansions
+  // For expansions
   const [expandedTasks, setExpandedTasks] = useState({});
-  // normal "bulk edit" expansions
   const [bulkEdit, setBulkEdit] = useState(false);
-  // simpler "bulk delete"? If you want it, add it. 
-  // const [bulkDelete, setBulkDelete] = useState(false);
-
   const [editingTasks, setEditingTasks] = useState({});
 
-  // new task form
+  // New Task form
   const [newTaskText, setNewTaskText] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("none");
   const [showNewTaskDueDate, setShowNewTaskDueDate] = useState(false);
@@ -106,13 +102,13 @@ function TasksPage() {
     if (!bulkEdit) {
       // auto-collapse others
       setExpandedTasks((prev) => {
-        const was = !!prev[taskId];
+        const wasExpanded = !!prev[taskId];
         const newState = {};
-        if (!was) newState[taskId] = true;
+        if (!wasExpanded) newState[taskId] = true;
         return newState;
       });
     } else {
-      // in bulkEdit => multiple expansions
+      // in bulk edit => multiple expansions
       setExpandedTasks((prev) => ({
         ...prev,
         [taskId]: !prev[taskId],
@@ -141,6 +137,21 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
+  function toggleBulkEdit() {
+    const nextVal = !bulkEdit;
+    setBulkEdit(nextVal);
+    if (nextVal) {
+      // expand all
+      const expandMap = {};
+      tasks.forEach((t) => (expandMap[t._id] = true));
+      setExpandedTasks(expandMap);
+    } else {
+      setExpandedTasks({});
+    }
+  }
+
+  // =========== Sorting & Grouping ===========
+
   function getSortedTasks() {
     const sorted = [...tasks];
     sorted.sort((a, b) => {
@@ -162,19 +173,19 @@ function TasksPage() {
         if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
           return aDue - bDue;
         }
-        if (aPrio !== bPrio) {
-          return bPrio - aPrio;
-        }
+        // then priority
+        if (aPrio !== bPrio) return bPrio - aPrio;
+        // then created date
         return aCreated - bCreated;
       } else if (sortBy === "priority") {
-        if (aPrio !== bPrio) {
-          return bPrio - aPrio;
-        }
+        if (aPrio !== bPrio) return bPrio - aPrio;
+        // then due date
         if (!aDue && bDue) return 1;
         if (aDue && !bDue) return -1;
         if (aDue && bDue && aDue.getTime() !== bDue.getTime()) {
           return aDue - bDue;
         }
+        // then created date
         return aCreated - bCreated;
       } else {
         // createdAt
@@ -184,26 +195,63 @@ function TasksPage() {
     return sorted;
   }
 
-  function toggleBulkEdit() {
-    const nextVal = !bulkEdit;
-    setBulkEdit(nextVal);
-    if (nextVal) {
-      // expand all
-      const expandMap = {};
-      tasks.forEach((t) => (expandMap[t._id] = true));
-      setExpandedTasks(expandMap);
-    } else {
-      setExpandedTasks({});
+  function groupTasksByDueDate(sortedTasks) {
+    // If we're not sorting by due date, don't group
+    if (sortBy !== "dueDate") {
+      return [{ dateLabel: null, tasks: sortedTasks }];
     }
+    const groups = {};
+    sortedTasks.forEach((task) => {
+      if (!task.dueDate) {
+        const key = "No Due Date";
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(task);
+      } else {
+        const dayKey = new Date(task.dueDate).toISOString().split("T")[0];
+        if (!groups[dayKey]) groups[dayKey] = [];
+        groups[dayKey].push(task);
+      }
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === "No Due Date") return 1;
+      if (b === "No Due Date") return -1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map((key) => {
+      let dateLabel;
+      if (key === "No Due Date") {
+        dateLabel = "No Due Date";
+      } else {
+        const dateObj = new Date(`${key}T00:00:00`);
+        dateLabel = dateObj.toLocaleDateString(undefined, {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      }
+      return { dateLabel, tasks: groups[key] };
+    });
   }
 
+  function getPriorityClass(priority) {
+    if (priority === "high") return "priority-high";
+    if (priority === "priority") return "priority-normal";
+    return "";
+  }
+
+  // =========== RENDER ===========
+
   const sortedTasks = getSortedTasks();
+  const groupedTasks = groupTasksByDueDate(sortedTasks);
 
   return (
     <div className="app-container">
       <h1>My To-Do List</h1>
 
-      {/* Spaces nav bar with hamburger */}
+      {/* If you still have a nav bar for spaces */}
       <SpacesNavBar
         selectedSpaceId={selectedSpaceId}
         onSpaceSelect={(id) => {
@@ -212,7 +260,7 @@ function TasksPage() {
         }}
       />
 
-      {/* Add new task form */}
+      {/* New Task Form */}
       {selectedSpaceId !== "DELETED" && (
         <form className="new-task-form" onSubmit={addTask}>
           <div className="form-row">
@@ -270,7 +318,7 @@ function TasksPage() {
         </form>
       )}
 
-      {/* Sort & Bulk Edit */}
+      {/* Sort & Bulk Edit in one line */}
       <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
         <div className="sort-row">
           <label htmlFor="sortBy">Sort By:</label>
@@ -290,106 +338,157 @@ function TasksPage() {
         </button>
       </div>
 
+      {/* Grouped by due date if sortBy=dueDate, otherwise all in one group */}
       <div className="tasks-container">
-        {sortedTasks.map((task) => {
-          const isExpanded = expandedTasks[task._id] || false;
-          const isEditing = editingTasks[task._id] || false;
+        {groupedTasks.map((group) => (
+          <div key={group.dateLabel || "no-date"} className="date-group">
+            {group.dateLabel && (
+              <h2 className="date-group-label">{group.dateLabel}</h2>
+            )}
+            <ul className="tasks-list">
+              {group.tasks.map((task) => {
+                const isExpanded = expandedTasks[task._id] || false;
+                const isEditing = editingTasks[task._id] || false;
+                const priorityClass = getPriorityClass(task.priority);
 
-          let priorityClass = "";
-          if (task.priority === "high") priorityClass = "priority-high";
-          else if (task.priority === "priority") priorityClass = "priority-normal";
-
-          return (
-            <div key={task._id} className={`tasks-list-item ${priorityClass}`}>
-              {/* Check + Title */}
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  className="mark-complete-checkbox"
-                  checked={task.completed}
-                  onChange={() => markComplete(task)}
-                />
-                <div
-                  className="task-main-content"
-                  onClick={() => {
-                    if (!isEditing) toggleExpandTask(task._id);
-                  }}
-                  style={{ cursor: "pointer" }}
-                >
-                  <div className="collapsed-row">
-                    <div className="text-with-priority">
-                      {task.text}
-                      {task.priority !== "none" && ` (${task.priority})`}
-                    </div>
-                    <button className="show-more-btn">
-                      {isExpanded ? "▲" : "▼"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Expanded row */}
-              {isExpanded && (
-                <div className="expanded-row">
-                  {selectedSpaceId === "DELETED" ? (
-                    <div className="actions-row">
-                      <button onClick={() => restoreTask(task._id)}>Restore</button>
-                    </div>
-                  ) : !isEditing ? (
-                    <div className="actions-row" style={{ display: "flex", flexWrap: "wrap" }}>
-                      <button onClick={() => startEditingTask(task._id)}>Edit</button>
-
-                      {/* Sub-lists dropdown inside the expanded task */}
-                      <SubListsDropdown taskId={task._id} />
-
-                      <div className="task-created-date">
-                        Created:{" "}
-                        {new Date(task.createdAt).toLocaleString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-
-                      <button
-                        className="delete-btn"
-                        style={{ marginLeft: "auto" }}
-                        onClick={() => deleteTask(task._id)}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <TaskEditForm
-                        task={task}
-                        onSave={(updatedFields) => saveTaskEdits(task._id, updatedFields)}
-                        onCancel={() => stopEditingTask(task._id)}
+                return (
+                  <li
+                    key={task._id}
+                    className={`tasks-list-item ${priorityClass}`}
+                    tabIndex={-1}
+                  >
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      {/* Inline checkbox for marking complete */}
+                      <input
+                        type="checkbox"
+                        className="mark-complete-checkbox"
+                        checked={task.completed}
+                        onChange={() => markComplete(task)}
+                        aria-label={`Mark ${task.text} as complete`}
                       />
-                      <div className="task-created-date" style={{ textAlign: "right" }}>
-                        Created:{" "}
-                        {new Date(task.createdAt).toLocaleString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+
+                      {/* Task text + arrow/trash can on far right */}
+                      <div
+                        className="task-main-content"
+                        style={{ flex: 1, cursor: isEditing ? "default" : "pointer" }}
+                        onClick={() => {
+                          if (!isEditing) toggleExpandTask(task._id);
+                        }}
+                      >
+                        <div className="collapsed-row">
+                          {/* Show text + priority in left area */}
+                          <div className="text-with-priority">
+                            {task.text}
+                            {task.priority !== "none" && ` (${task.priority})`}
+                          </div>
+                        </div>
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+
+                      {/* Right side: trash can (if bulkEdit or expanded) + arrow */}
+                      <div
+                        style={{
+                          marginLeft: "auto",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        {/* Show the trash can if bulkEdit is on OR the task is expanded */}
+                        {(bulkEdit || isExpanded) && selectedSpaceId !== "DELETED" && (
+                          <button
+                            className="delete-btn"
+                            onClick={() => deleteTask(task._id)}
+                            aria-label="Delete Task"
+                          >
+                            🗑
+                          </button>
+                        )}
+
+                        {/* If it's in DELETED space, show restore instead of arrow? Or do arrow + restore? */}
+                        {selectedSpaceId === "DELETED" ? (
+                          <button onClick={() => restoreTask(task._id)}>
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            className="show-more-btn"
+                            onClick={() => toggleExpandTask(task._id)}
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? "▲" : "▼"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* If expanded, show the expanded row with Edit, sub-lists, created date, etc. */}
+                    {isExpanded && !bulkEdit && (
+                      <div className="expanded-row">
+                        {!isEditing ? (
+                          <div
+                            className="actions-row"
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                            }}
+                          >
+                            <button onClick={() => startEditingTask(task._id)}>
+                              Edit
+                            </button>
+
+                            {/* Sub-lists dropdown inside the expanded task */}
+                            <SubListsDropdown taskId={task._id} />
+
+                            <div className="task-created-date" style={{ marginLeft: "auto" }}>
+                              Created:{" "}
+                              {new Date(task.createdAt).toLocaleString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <TaskEditForm
+                              task={task}
+                              onSave={(updatedFields) =>
+                                saveTaskEdits(task._id, updatedFields)
+                              }
+                              onCancel={() => stopEditingTask(task._id)}
+                            />
+                            <div
+                              className="task-created-date"
+                              style={{ textAlign: "right" }}
+                            >
+                              Created:{" "}
+                              {new Date(task.createdAt).toLocaleString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
+/** Inline edit form for a task: text, priority, due date, completed */
 function TaskEditForm({ task, onSave, onCancel }) {
   const [editText, setEditText] = useState(task.text);
   const [editPriority, setEditPriority] = useState(task.priority || "none");
