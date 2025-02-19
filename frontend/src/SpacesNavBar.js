@@ -103,6 +103,7 @@ function SpacesNavBar({ onSpaceSelect, selectedSpaceId }) {
           Deleted
         </div>
 
+        {/* Add space form */}
         {showAdd ? (
           <form onSubmit={handleAddSpace} style={{ display: "inline-flex", gap: "6px" }}>
             <input
@@ -117,16 +118,12 @@ function SpacesNavBar({ onSpaceSelect, selectedSpaceId }) {
             </button>
           </form>
         ) : (
-          <button className="add-btn" aria-label="Add space" onClick={() => setShowAdd(true)}>
+          <button className="add-btn" onClick={() => setShowAdd(true)}>
             ➕
           </button>
         )}
 
-        <button
-          className="toggle-delete-btn"
-          aria-label={deleteMode ? "Stop deleting spaces" : "Delete spaces"}
-          onClick={toggleDeleteMode}
-        >
+        <button className="toggle-delete-btn" onClick={toggleDeleteMode}>
           {deleteMode ? "🗑️(Stop)" : "🗑️"}
         </button>
       </div>

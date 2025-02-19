@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
 import SpacesNavBar from "./SpacesNavBar";
+import SubListsDropdown from "./SubListsDropdown";
 
 const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
 
@@ -12,16 +13,16 @@ function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [sortBy, setSortBy] = useState("dueDate");
 
-  // For expansions
+  // expansions
   const [expandedTasks, setExpandedTasks] = useState({});
-  // For normal "bulk edit" expansions
+  // normal "bulk edit" expansions
   const [bulkEdit, setBulkEdit] = useState(false);
-  // For "bulk delete" that only toggles trash icons
-  const [bulkDelete, setBulkDelete] = useState(false);
+  // simpler "bulk delete"? If you want it, add it. 
+  // const [bulkDelete, setBulkDelete] = useState(false);
 
   const [editingTasks, setEditingTasks] = useState({});
 
-  // New Task form
+  // new task form
   const [newTaskText, setNewTaskText] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("none");
   const [showNewTaskDueDate, setShowNewTaskDueDate] = useState(false);
@@ -101,14 +102,13 @@ function TasksPage() {
       .catch((err) => console.error(err));
   }
 
-  // Expand single task
   function toggleExpandTask(taskId) {
     if (!bulkEdit) {
       // auto-collapse others
       setExpandedTasks((prev) => {
-        const already = !!prev[taskId];
+        const was = !!prev[taskId];
         const newState = {};
-        if (!already) newState[taskId] = true;
+        if (!was) newState[taskId] = true;
         return newState;
       });
     } else {
@@ -177,18 +177,18 @@ function TasksPage() {
         }
         return aCreated - bCreated;
       } else {
-        // sortBy === createdAt
+        // createdAt
         return aCreated - bCreated;
       }
     });
     return sorted;
   }
 
-  // Toggling expansions for all tasks
   function toggleBulkEdit() {
     const nextVal = !bulkEdit;
     setBulkEdit(nextVal);
     if (nextVal) {
+      // expand all
       const expandMap = {};
       tasks.forEach((t) => (expandMap[t._id] = true));
       setExpandedTasks(expandMap);
@@ -197,27 +197,22 @@ function TasksPage() {
     }
   }
 
-  // Toggling bulk delete
-  function toggleBulkDelete() {
-    setBulkDelete(!bulkDelete);
-  }
-
   const sortedTasks = getSortedTasks();
 
   return (
     <div className="app-container">
       <h1>My To-Do List</h1>
 
-      {/* Nav bar for spaces */}
+      {/* Spaces nav bar with hamburger */}
       <SpacesNavBar
         selectedSpaceId={selectedSpaceId}
         onSpaceSelect={(id) => {
           setSelectedSpaceId(id);
-          setBulkDelete(false);
           setBulkEdit(false);
         }}
       />
 
+      {/* Add new task form */}
       {selectedSpaceId !== "DELETED" && (
         <form className="new-task-form" onSubmit={addTask}>
           <div className="form-row">
@@ -275,7 +270,7 @@ function TasksPage() {
         </form>
       )}
 
-      {/* Sort & Bulk Controls */}
+      {/* Sort & Bulk Edit */}
       <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
         <div className="sort-row">
           <label htmlFor="sortBy">Sort By:</label>
@@ -290,76 +285,50 @@ function TasksPage() {
           </select>
         </div>
 
-        <div>
-          <button onClick={toggleBulkEdit}>
-            {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
-          </button>
-        </div>
-
-        <div>
-          <button onClick={toggleBulkDelete}>
-            {bulkDelete ? "Stop Bulk Delete" : "Bulk Delete"}
-          </button>
-        </div>
+        <button onClick={toggleBulkEdit}>
+          {bulkEdit ? "Stop Bulk Edit" : "Edit All"}
+        </button>
       </div>
 
       <div className="tasks-container">
         {sortedTasks.map((task) => {
-          const isExpanded = !!expandedTasks[task._id] && !bulkDelete;
-          const isEditing = !!editingTasks[task._id];
+          const isExpanded = expandedTasks[task._id] || false;
+          const isEditing = editingTasks[task._id] || false;
 
-          // Priority styling
           let priorityClass = "";
           if (task.priority === "high") priorityClass = "priority-high";
           else if (task.priority === "priority") priorityClass = "priority-normal";
 
           return (
             <div key={task._id} className={`tasks-list-item ${priorityClass}`}>
+              {/* Check + Title */}
               <div style={{ display: "flex", alignItems: "center" }}>
-                {/* Mark complete checkbox */}
                 <input
                   type="checkbox"
                   className="mark-complete-checkbox"
                   checked={task.completed}
                   onChange={() => markComplete(task)}
                 />
-
-                {/* Title & expand toggle, but only if not in bulkDelete mode */}
-                {!bulkDelete && (
-                  <div
-                    className="task-main-content"
-                    onClick={() => {
-                      if (!isEditing) {
-                        // expand/collapse
-                        toggleExpandTask(task._id);
-                      }
-                    }}
-                  >
-                    <div className="collapsed-row">
-                      <div className="text-with-priority">
-                        {task.text}
-                        {task.priority !== "none" && ` (${task.priority})`}
-                      </div>
-                      <button className="show-more-btn">
-                        {isExpanded ? "▲" : "▼"}
-                      </button>
+                <div
+                  className="task-main-content"
+                  onClick={() => {
+                    if (!isEditing) toggleExpandTask(task._id);
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="collapsed-row">
+                    <div className="text-with-priority">
+                      {task.text}
+                      {task.priority !== "none" && ` (${task.priority})`}
                     </div>
+                    <button className="show-more-btn">
+                      {isExpanded ? "▲" : "▼"}
+                    </button>
                   </div>
-                )}
-
-                {/* If bulkDelete is on, show a trash icon on the right */}
-                {bulkDelete && (
-                  <button
-                    className="delete-btn"
-                    style={{ marginLeft: "auto" }}
-                    onClick={() => deleteTask(task._id)}
-                  >
-                    🗑
-                  </button>
-                )}
+                </div>
               </div>
 
-              {/* Expanded row, only if not bulkDelete */}
+              {/* Expanded row */}
               {isExpanded && (
                 <div className="expanded-row">
                   {selectedSpaceId === "DELETED" ? (
@@ -370,8 +339,8 @@ function TasksPage() {
                     <div className="actions-row" style={{ display: "flex", flexWrap: "wrap" }}>
                       <button onClick={() => startEditingTask(task._id)}>Edit</button>
 
-                      {/* Possibly sub-lists nav or dropdown here */}
-                      {/* <SubListsDropdown taskId={task._id} /> */}
+                      {/* Sub-lists dropdown inside the expanded task */}
+                      <SubListsDropdown taskId={task._id} />
 
                       <div className="task-created-date">
                         Created:{" "}
@@ -384,7 +353,6 @@ function TasksPage() {
                         })}
                       </div>
 
-                      {/* Another trash can if you want to also allow deletion in expanded mode */}
                       <button
                         className="delete-btn"
                         style={{ marginLeft: "auto" }}

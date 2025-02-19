@@ -1,5 +1,7 @@
 /* src/NavBar.css */
 
+/* Basic styling for nav bar with hamburger. */
+
 .nav-bar {
   display: flex;
   align-items: center;
@@ -7,6 +9,7 @@
   padding: 4px;
   position: relative;
   color: #fff;
+  gap: 8px;
 }
 
 .hamburger-btn {
@@ -18,6 +21,7 @@
   margin-right: 8px;
 }
 
+/* On wide screens, we want the menu always visible, no hamburger. */
 .nav-menu {
   display: flex;
   gap: 8px;
@@ -25,7 +29,32 @@
 }
 
 .nav-menu.show {
-  /* If you want a dropdown style for narrow screens, handle media queries here */
+  /* This class toggles if we want to do a small-screen dropdown. */
+}
+
+/* 
+  We do a media query at e.g. 768px:
+  - Above 768px: hide the hamburger, always show .nav-menu
+  - Below 768px: show hamburger, conditionally show/hide .nav-menu
+*/
+
+@media (min-width: 769px) {
+  .hamburger-btn {
+    display: none; /* hide hamburger on wide screens */
+  }
+  .nav-menu {
+    display: flex !important; /* always show menu */
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-menu {
+    display: none; /* hide menu by default if small screen */
+  }
+  .nav-menu.show {
+    display: flex; /* show when toggled */
+    flex-direction: column;
+  }
 }
 
 .nav-item {
@@ -60,7 +89,6 @@
   color: white;
   font-size: 1.2rem;
   cursor: pointer;
-  margin-left: 8px;
 }
 .add-btn:hover,
 .toggle-delete-btn:hover {
