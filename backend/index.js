@@ -1,14 +1,16 @@
 // index.js (Backend)
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
 
-const express = require("express");
-const cors = require("cors");
-const mongoose = require("mongoose");
+dotenv.config();
 
 const app = express();
 
 // ====== CORS CONFIG ======
 const corsOptions = {
-  origin: process.env.REACT_APP_API_URL, // your actual frontend domain
+  origin: ["http://localhost:3000", "https://my-todo-app-frontend-catn.onrender.com"], // Allow local dev & deployed frontend
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   optionsSuccessStatus: 204,
@@ -23,12 +25,18 @@ app.use((req, res, next) => {
 });
 
 // ====== CONNECT TO MONGODB ======
-const mongoURI = process.env.MONGO_URI || "mongodb://localhost:27017/todo";
-mongoose
-  .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+if (!process.env.MONGO_URI) {
+  console.error("❌ MONGO_URI is not set in environment variables!");
+  process.exit(1);
+}
 
+const mongoURI = process.env.MONGO_URI;
+
+mongoose
+  .connect(mongoURI)
+  .then(() => console.log("✅ Connected to MongoDB Atlas"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
+ 
 // ====== SCHEMAS & MODELS ======
 
 // 1) TASKS
