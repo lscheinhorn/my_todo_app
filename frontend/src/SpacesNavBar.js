@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./NavBar.css";
 
-const SPACES_API_URL = "https://my-todo-app-mujx.onrender.com/spaces";
+const SPACES_API_URL = process.env.REACT_APP_API_URL + "/spaces";
 
 function SpacesNavBar({ onSpaceSelect, selectedSpaceId }) {
   const [spaces, setSpaces] = useState([]);

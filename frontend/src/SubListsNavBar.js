@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./NavBar.css";
 
-const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
+const SUBLISTS_API_URL = process.env.REACT_APP_API_URL + "/sublists";
 
 /**
  * For nested sub-lists:
