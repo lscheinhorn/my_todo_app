@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
+
 // If you still have a spaces nav bar or sub-lists dropdown:
 import SpacesNavBar from "./SpacesNavBar";
 import SubListsDropdown from "./SubListsDropdown";
@@ -99,6 +100,7 @@ function TasksPage() {
 
   function toggleExpandTask(taskId) {
     if (!bulkEdit) {
+      // auto-collapse others
       setExpandedTasks((prev) => {
         const wasExpanded = !!prev[taskId];
         const newState = {};
@@ -106,6 +108,7 @@ function TasksPage() {
         return newState;
       });
     } else {
+      // in bulk edit => multiple expansions
       setExpandedTasks((prev) => ({
         ...prev,
         [taskId]: !prev[taskId],
@@ -181,7 +184,7 @@ function TasksPage() {
         }
         return aCreated - bCreated;
       } else {
-        // createdAt
+        // sortBy === "createdAt"
         return aCreated - bCreated;
       }
     });
@@ -238,11 +241,22 @@ function TasksPage() {
   const sortedTasks = getSortedTasks();
   const groupedTasks = groupTasksByDueDate(sortedTasks);
 
-  return (
-    <div className="app-container">
-      <h1>My To-Do List</h1>
+  // A helper to see if we are sorting by createdAt
+  const isSortByCreatedAt = sortBy === "createdAt";
 
-      {/* If you still use a nav bar for spaces: */}
+  return (
+    <div
+      className="app-container"
+      style={{
+        // Make width consistent with rest of the app
+        maxWidth: "600px",
+        margin: "0 auto",
+        padding: "20px",
+      }}
+    >
+      <h1 style={{ marginBottom: "10px" }}>My To-Do List</h1>
+
+      {/* If you still use a nav bar for spaces */}
       <SpacesNavBar
         selectedSpaceId={selectedSpaceId}
         onSpaceSelect={(id) => {
@@ -250,6 +264,9 @@ function TasksPage() {
           setBulkEdit(false);
         }}
       />
+
+      {/* Add some comfortable spacing before the new-task form */}
+      <div style={{ height: "20px" }} />
 
       {/* New Task Form */}
       {selectedSpaceId !== "DELETED" && (
@@ -310,7 +327,7 @@ function TasksPage() {
       )}
 
       {/* Sort & Bulk Edit */}
-      <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
+      <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
         <div className="sort-row">
           <label htmlFor="sortBy">Sort By:</label>
           <select
@@ -383,7 +400,6 @@ function TasksPage() {
                         gap: "6px",
                       }}
                     >
-                      {/* Show trash can if bulkEdit or expanded, except in DELETED space */}
                       {(bulkEdit || isExpanded) && selectedSpaceId !== "DELETED" && (
                         <button
                           className="delete-btn"
@@ -408,9 +424,8 @@ function TasksPage() {
                     </div>
                   </div>
 
-                  {/* Expanded row: 
-                      - left column: sub-lists & created date
-                      - right column: edit button (or form)
+                  {/* Expanded row: left for sub-lists, right for edit form, 
+                      *only* show created date if sortBy === 'createdAt' 
                   */}
                   {isExpanded && !bulkEdit && (
                     <div
@@ -421,27 +436,29 @@ function TasksPage() {
                         alignItems: "flex-start",
                       }}
                     >
-                      {/* Left column: sub-lists, created date */}
+                      {/* Left column: sub-lists or other info */}
                       <div style={{ flex: 1 }}>
-                        {/* Put sub-lists or other info under the checkbox/title */}
                         <SubListsDropdown taskId={task._id} />
 
-                        <div
-                          className="task-created-date"
-                          style={{ marginTop: "10px" }}
-                        >
-                          Created:{" "}
-                          {new Date(task.createdAt).toLocaleString(undefined, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
+                        {/* Only show created date if sortBy === 'createdAt' */}
+                        {isSortByCreatedAt && (
+                          <div
+                            className="task-created-date"
+                            style={{ marginTop: "10px" }}
+                          >
+                            Created:{" "}
+                            {new Date(task.createdAt).toLocaleString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Right column: edit button or form, aligned under arrow + trash */}
+                      {/* Right column: edit button or edit form */}
                       <div
                         style={{
                           display: "flex",
