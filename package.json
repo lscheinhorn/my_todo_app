@@ -1,8 +1,13 @@
 {
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "concurrently": "^9.1.2"
+  },
+  "scripts": {
+    "start": "concurrently \"npm run dev --prefix backend\" \"npm run start --prefix frontend\""
   },
   "dependencies": {
+    "docker": "^1.0.0",
     "dotenv": "^16.4.7",
     "mongodb": "^6.13.0",
     "mongoose": "^8.10.1",

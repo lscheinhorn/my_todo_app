@@ -8,7 +8,7 @@ import "./App.css";
 import SpacesNavBar from "./SpacesNavBar";
 import SubListsDropdown from "./SubListsDropdown";
 
-const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
+const TASKS_API_URL = process.env.REACT_APP_API_URL + "/tasks";
 
 function TasksPage() {
   const [selectedSpaceId, setSelectedSpaceId] = useState("ALL");

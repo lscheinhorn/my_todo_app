@@ -9,8 +9,8 @@ import "./App.css";
  * Adjust these to your actual backend domain:
  * e.g. "https://my-todo-app-mujx.onrender.com"
  */
-const SUBLISTS_API_URL = "https://my-todo-app-mujx.onrender.com/sublists";
-const TASKS_API_URL = "https://my-todo-app-mujx.onrender.com/tasks";
+const SUBLISTS_API_URL = process.env.REACT_APP_API_URL + "/sublists";
+const TASKS_API_URL = process.env.REACT_APP_API_URL + "/tasks";
 
 /**
  * SubListsPage:
@@ -179,7 +179,7 @@ function SubListsPage() {
     console.log("Deleting item:", itemId, "from sub-list:", selectedSubListId);
     console.log("selectedSubListId is:", selectedSubListId);
     console.log("itemId is:", itemId);
-    
+
     axios
       .delete(`${SUBLISTS_API_URL}/${selectedSubListId}/items/${itemId}`)
       .then((res) => {

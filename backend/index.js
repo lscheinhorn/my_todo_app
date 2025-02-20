@@ -8,7 +8,7 @@ const app = express();
 
 // ====== CORS CONFIG ======
 const corsOptions = {
-  origin: "https://my-todo-app-frontend-catn.onrender.com", // your actual frontend domain
+  origin: process.env.REACT_APP_API_URL, // your actual frontend domain
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   optionsSuccessStatus: 204,
